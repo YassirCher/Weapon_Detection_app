@@ -1,0 +1,574 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Résultat de Détection | Sécurité Urbaine{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    /* Animation d'entrée pour les cartes */
+    .fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    /* Style personnalisé pour le tableau */
+    .detection-table {
+        border-collapse: separate;
+        border-spacing: 0 0.5rem;
+    }
+    .detection-table th,
+    .detection-table td {
+        border: none;
+        padding: 0.75rem 1rem;
+        background: #f9fafb;
+    }
+    .detection-table th {
+        background: #e0e7ff;
+        font-weight: 600;
+    }
+    .detection-table tr:hover td {
+        background: #eef2ff;
+        transition: background 0.3s ease;
+    }
+    /* Style pour la prévisualisation des images */
+    .image-preview {
+        position: relative;
+        overflow: hidden;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .image-preview img {
+        transition: transform 0.3s ease;
+    }
+    .image-preview:hover img {
+        transform: scale(1.05);
+    }
+    /* Scrollbar personnalisée */
+    .chatbot-content {
+        scrollbar-width: thin;
+        scrollbar-color: #9ca3af #f3f4f6;
+    }
+    .chatbot-content::-webkit-scrollbar {
+        width: 6px;
+    }
+    .chatbot-content::-webkit-scrollbar-track {
+        background: #f3f4f6;
+    }
+    .chatbot-content::-webkit-scrollbar-thumb {
+        background-color: #9ca3af;
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-gray-50 font-inter px-4 sm:px-6 lg:px-8 py-6 min-h-screen">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Section principale (image et infos) -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="fade-in bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="bg-[#0d6efd] text-white px-6 py-4 flex justify-between items-center">
+                    <h5 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-search mr-2"></i>Résultat de Détection
+                    </h5>
+                    <span class="px-3 py-1 rounded-full text-sm font-medium {% if detection.danger_level == 'HYPERDANGEROUS' %}bg-red-500{% elif detection.danger_level == 'DANGEROUS' %}bg-yellow-500{% else %}bg-green-500{% endif %} text-white">
+                        {% if detection.danger_level == 'HYPERDANGEROUS' %}
+                            Danger Critique
+                        {% elif detection.danger_level == 'DANGEROUS' %}
+                            Danger Présent
+                        {% else %}
+                            Aucun Danger
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="p-6">
+                    {% if detection.is_simulated %}
+                    <div class="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm flex items-center mb-4">
+                        <i class="fas fa-robot mr-2"></i>
+                        <span><strong>Mode Simulation :</strong> Cette détection est simulée et ne représente pas une analyse réelle.</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="space-y-6">
+                        <!-- Images ou Vidéos -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="image-preview">
+                                <h6 class="text-sm font-medium text-gray-700 mb-2">
+                                    {% if detection.media_type == 'VIDEO' %}
+                                        <i class="fas fa-video mr-1"></i>Vidéo Originale
+                                    {% else %}
+                                        <i class="fas fa-image mr-1"></i>Image Originale
+                                    {% endif %}
+                                </h6>
+                                {% if detection.media_type == 'VIDEO' %}
+                                    <video controls preload="metadata" class="w-full h-auto rounded-lg" style="max-height: 500px;">
+                                        <source src="/media/{{ detection.original_file }}" type="video/mp4">
+                                        Votre navigateur ne supporte pas la lecture vidéo.
+                                    </video>
+                                {% else %}
+                                    <img src="/media/{{ detection.original_file }}" alt="Image analysée" class="w-full h-auto rounded-lg object-cover">
+                                {% endif %}
+                            </div>
+                            <div class="image-preview">
+                                <h6 class="text-sm font-medium text-gray-700 mb-2">
+                                    {% if detection.media_type == 'VIDEO' %}
+                                        <i class="fas fa-video mr-1"></i>Vidéo Annotée
+                                    {% else %}
+                                        <i class="fas fa-image mr-1"></i>Image Annotée
+                                    {% endif %}
+                                </h6>
+                                {% if detection.media_type == 'VIDEO' %}
+                                    <video controls preload="metadata" class="w-full h-auto rounded-lg" style="max-height: 500px;">
+                                        <source src="/media/{{ detection.uploaded_file }}" type="video/mp4">
+                                        Votre navigateur ne supporte pas la lecture vidéo.
+                                    </video>
+                                {% else %}
+                                    <img src="/media/{{ detection.uploaded_file }}" alt="Résultat annoté" class="w-full h-auto rounded-lg object-cover">
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Informations de détection -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h6 class="text-sm font-medium text-gray-700 border-b pb-2 mb-4">Informations de Détection</h6>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm text-gray-600"><strong>Utilisateur :</strong> {{ detection.user.get_full_name|default:detection.user.email }}</p>
+                                    <p class="text-sm text-gray-600"><strong>Date :</strong> {{ detection.detection_timestamp|date:"d/m/Y H:i" }}</p>
+                                    <p class="text-sm text-gray-600"><strong>Localisation :</strong> {{ detection.user_location|default:"Non spécifiée" }}</p>
+                                    {% if detection.media_type == 'VIDEO' %}
+                                        <p class="text-sm text-gray-600"><strong>Type :</strong> <span class="text-purple-600 font-semibold">Vidéo</span></p>
+                                    {% else %}
+                                        <p class="text-sm text-gray-600"><strong>Type :</strong> <span class="text-blue-600 font-semibold">Image</span></p>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600"><strong>Modèle utilisé :</strong> {{ detection.model_used }}</p>
+                                    <p class="text-sm text-gray-600"><strong>Niveau de danger :</strong>
+                                        {% if detection.danger_level == 'HYPERDANGEROUS' %}
+                                            <span class="text-red-600 font-medium">Hyperdangereux</span>
+                                        {% elif detection.danger_level == 'DANGEROUS' %}
+                                            <span class="text-yellow-600 font-medium">Dangereux</span>
+                                        {% else %}
+                                            <span class="text-green-600 font-medium">Aucun</span>
+                                        {% endif %}
+                                    </p>
+                                    {% if detection.media_type == 'VIDEO' and detection.video_metadata %}
+                                        <p class="text-sm text-gray-600"><strong>Durée :</strong> {{ detection.video_metadata.duration|floatformat:1 }}s</p>
+                                        <p class="text-sm text-gray-600"><strong>FPS :</strong> {{ detection.video_metadata.fps|floatformat:0 }}</p>
+                                        <p class="text-sm text-gray-600"><strong>Frames analysées :</strong> {{ detection.frames_analyzed }}</p>
+                                    {% endif %}
+                                    {% if detection.processing_duration %}
+                                        <p class="text-sm text-gray-600"><strong>Temps de traitement :</strong> {{ detection.processing_duration|floatformat:1 }}s</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Objets détectés -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h6 class="text-sm font-medium text-gray-700 border-b pb-2 mb-4">Objets Détectés</h6>
+                            {% if detection.detected_objects %}
+                                <div class="overflow-x-auto">
+                                    <table class="detection-table w-full">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-left">Catégorie</th>
+                                                <th class="text-left">Confiance</th>
+                                                {% if detection.media_type == 'VIDEO' %}
+                                                <th class="text-left">Frame</th>
+                                                {% endif %}
+                                                <th class="text-left">Statut</th>
+                                                {% if detection.media_type == 'VIDEO' and not validation %}
+                                                <th class="text-center">Actions</th>
+                                                {% endif %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for object in detection.detected_objects %}
+                                            <tr data-category="{{ object.category }}" data-frame="{{ object.frame|default:'' }}" data-confidence="{{ object.confidence }}">
+                                                <td class="text-sm text-gray-800">{{ object.category }}</td>
+                                                <td class="text-sm text-gray-800">{{ object.confidence|floatformat:2 }}</td>
+                                                {% if detection.media_type == 'VIDEO' %}
+                                                <td class="text-sm text-gray-800">
+                                                    {% if object.frame %}
+                                                        #{{ object.frame }}
+                                                        {% if object.timestamp %}
+                                                        <span class="text-gray-500 text-xs">({{ object.timestamp|floatformat:1 }}s)</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </td>
+                                                {% endif %}
+                                                <td class="text-sm">
+                                                    {% for cat in dangerous_categories %}
+                                                        {% if object.category|lower == cat.name|lower %}
+                                                            {% if cat.category_type == 'HYPERDANGEROUS' %}
+                                                                <span class="px-2 py-1 rounded-full bg-red-500 text-white text-xs">Hyperdangereux</span>
+                                                            {% elif cat.category_type == 'DANGEROUS' %}
+                                                                <span class="px-2 py-1 rounded-full bg-yellow-500 text-gray-800 text-xs">Dangereux</span>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    {% empty %}
+                                                        <span class="px-2 py-1 rounded-full bg-gray-200 text-gray-600 text-xs">Normal</span>
+                                                    {% endfor %}
+                                                </td>
+                                                {% if detection.media_type == 'VIDEO' and not validation %}
+                                                <td class="text-center">
+                                                    <div class="flex justify-center gap-2 category-validation-container" 
+                                                         data-category="{{ object.category }}" 
+                                                         data-frame="{{ object.frame|default:'null' }}">
+                                                        <!-- Les boutons ou le statut seront injectés ici par JavaScript -->
+                                                    </div>
+                                                </td>
+                                                {% endif %}
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-sm text-gray-500">Aucun objet détecté.</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Validation -->
+                        {% if validation %}
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h6 class="text-sm font-medium text-gray-700 border-b pb-2 mb-4">Validation</h6>
+                            <div class="space-y-2">
+                                <p class="text-sm text-gray-600"><strong>Validé par :</strong> {{ validation.validator.get_full_name|default:validation.validator.email }}</p>
+                                <p class="text-sm text-gray-600"><strong>Date :</strong> {{ validation.validation_timestamp|date:"d/m/Y H:i" }}</p>
+                                <p class="text-sm text-gray-600"><strong>Résultat :</strong>
+                                    {% if validation.is_correct %}
+                                        <span class="text-green-600 font-medium">Détection correcte</span>
+                                    {% else %}
+                                        <span class="text-red-600 font-medium">Détection incorrecte</span>
+                                        {% if validation.corrected_category %}
+                                            (Catégorie réelle : <span class="text-gray-800">{{ validation.corrected_category }}</span>)
+                                        {% endif %}
+                                    {% endif %}
+                                </p>
+                                {% if validation.comments %}
+                                    <p class="text-sm text-gray-600"><strong>Commentaires :</strong> {{ validation.comments }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% elif validation_form %}
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h6 class="text-sm font-medium text-gray-700 border-b pb-2 mb-4">Valider cette détection</h6>
+                            <form method="post" action="{% url 'detection:validate' detection.id %}" class="space-y-4">
+                                {% csrf_token %}
+                                <div class="flex items-center space-x-4">
+                                    <label class="text-sm font-medium text-gray-700">La détection est-elle correcte ?</label>
+                                    <div class="flex space-x-6">
+                                        <div class="flex items-center">
+                                            <input type="radio" name="is_correct" id="is_correct_true" value="True" class="h-4 w-4 text-[#0d6efd] focus:ring-[#0d6efd]">
+                                            <label for="is_correct_true" class="ml-2 text-sm text-gray-600">Oui</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input type="radio" name="is_correct" id="is_correct_false" value="False" class="h-4 w-4 text-[#0d6efd] focus:ring-[#0d6efd]">
+                                            <label for="is_correct_false" class="ml-2 text-sm text-gray-600">Non</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="corrected_category_div" class="mt-2 space-y-2" style="display: none;">
+                                    <label for="{{ validation_form.corrected_category.id_for_label }}" class="text-sm font-medium text-gray-700">Catégorie réelle (si incorrecte)</label>
+                                    <input type="text" name="{{ validation_form.corrected_category.name }}" id="{{ validation_form.corrected_category.id_for_label }}" class="w-full p-2 border border-gray-300 rounded-md focus:ring-[#0d6efd] focus:border-[#0d6efd]">
+                                </div>
+                                <div class="mt-2 space-y-2">
+                                    <label for="{{ validation_form.comments.id_for_label }}" class="text-sm font-medium text-gray-700">Commentaires (optionnel)</label>
+                                    <textarea name="{{ validation_form.comments.name }}" id="{{ validation_form.comments.id_for_label }}" class="w-full p-2 border border-gray-300 rounded-md focus:ring-[#0d6efd] focus:border-[#0d6efd] h-24"></textarea>
+                                </div>
+                                <div>
+                                    <button type="submit" class="w-full bg-[#0d6efd] text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center text-sm font-medium shadow-md hover:shadow-lg">
+                                        <i class="fas fa-check-circle mr-2"></i>Envoi
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Assistant IA -->
+        <div class="space-y-6">
+            <div class="fade-in bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="bg-[#0d6efd] text-white px-6 py-4">
+                    <h5 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-robot mr-2"></i>Assistant IA
+                    </h5>
+                </div>
+                <div class="p-6">
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <div class="flex items-center mb-4">
+                            <div class="text-[#0d6efd] mr-3">
+                                <i class="fas fa-comment-dots text-2xl"></i>
+                            </div>
+                            <div>
+                                <h6 class="text-sm font-medium text-gray-700">Instructions de Sécurité</h6>
+                                <p class="text-xs text-gray-500">Basées sur l'analyse de l'image</p>
+                            </div>
+                        </div>
+                        <div class="chatbot-content max-h-64 overflow-y-auto bg-white p-3 rounded-md border border-gray-200" id="chatbot-content">
+                            {% if "Erreur" in chatbot_response %}
+                                <div class="bg-red-50 text-red-700 p-2 rounded-md text-sm">
+                                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                                    {{ chatbot_response|linebreaks }}
+                                </div>
+                            {% else %}
+                                {{ chatbot_response|safe }}
+                            {% endif %}
+                        </div>
+                        <div class="mt-4 space-y-2">
+                            <input type="text" id="chatbot-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-[#0d6efd] focus:border-[#0d6efd] text-sm" placeholder="Posez une question à l'assistant...">
+                            <button onclick="sendChatbotMessage()" class="w-full bg-[#0d6efd] text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 text-sm font-medium">Envoyer</button>
+                        </div>
+                        <div class="mt-2 text-right">
+                            <p class="text-xs text-gray-500">Modèle : Gemini 2.0 flash</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 space-y-2">
+                        <a href="{% url 'detection:history' %}" class="w-full flex items-center justify-center bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300 text-sm font-medium">
+                            <i class="fas fa-history mr-2"></i>Retour à l'historique
+                        </a>
+                        <a href="{% url 'detection:upload' %}" class="w-full flex items-center justify-center bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-all duration-300 text-sm font-medium">
+                            <i class="fas fa-camera mr-2"></i>Nouvelle détection
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.detectionResults = {{ detection_objects_json|safe }};
+    window.dangerousCategories = {{ dangerous_categories_json|safe }};
+    window.categoryValidations = {{ category_validations_json|safe }};
+    window.simulationMode = false;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialiser les boutons de validation pour les vidéos
+        initializeCategoryValidationButtons();
+        
+        const isCorrectRadios = document.querySelectorAll('input[name="is_correct"]');
+        const correctedCategoryDiv = document.getElementById('corrected_category_div');
+        if (isCorrectRadios.length > 0 && correctedCategoryDiv) {
+            isCorrectRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    correctedCategoryDiv.style.display = this.value === 'False' ? 'block' : 'none';
+                });
+            });
+        }
+    });
+    
+    function initializeCategoryValidationButtons() {
+        const containers = document.querySelectorAll('.category-validation-container');
+        containers.forEach(container => {
+            const category = container.dataset.category;
+            const frame = container.dataset.frame;
+            const key = `${category}_${frame}`;
+            
+            // Récupérer la confiance depuis la ligne du tableau
+            const row = container.closest('tr');
+            const confidence = row ? row.dataset.confidence : 0;
+            
+            if (window.categoryValidations && window.categoryValidations[key]) {
+                // Afficher le statut de validation
+                const validation = window.categoryValidations[key];
+                if (validation.is_valid) {
+                    container.innerHTML = '<span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">✓ Validée</span>';
+                } else {
+                    container.innerHTML = '<span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded">✗ Rejetée</span>';
+                }
+            } else {
+                // Afficher les boutons avec la vraie valeur de confidence
+                const frameValue = frame || 'null';
+                
+                // Créer les boutons dynamiquement pour éviter les problèmes de conversion de type
+                const validateBtn = document.createElement('button');
+                validateBtn.className = 'validate-btn px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors';
+                validateBtn.title = 'Valider cette catégorie';
+                validateBtn.innerHTML = '<i class="fas fa-check"></i>';
+                validateBtn.addEventListener('click', function() {
+                    validateCategory({{ detection.id }}, category, frameValue === 'null' ? null : frameValue, confidence, true);
+                });
+                
+                const rejectBtn = document.createElement('button');
+                rejectBtn.className = 'reject-btn px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors';
+                rejectBtn.title = 'Rejeter cette catégorie';
+                rejectBtn.innerHTML = '<i class="fas fa-times"></i>';
+                rejectBtn.addEventListener('click', function() {
+                    validateCategory({{ detection.id }}, category, frameValue === 'null' ? null : frameValue, confidence, false);
+                });
+                
+                container.innerHTML = '';
+                container.appendChild(validateBtn);
+                container.appendChild(rejectBtn);
+            }
+        });
+    }
+
+    async function sendChatbotMessage() {
+        const input = document.getElementById('chatbot-input').value;
+        if (!input) return;
+
+        const chatbotContent = document.getElementById('chatbot-content');
+        const userMessage = document.createElement('div');
+        userMessage.className = 'bg-blue-50 text-blue-700 p-2 rounded-md text-sm mt-2';
+        userMessage.textContent = `Vous : ${input}`;
+        chatbotContent.appendChild(userMessage);
+
+        try {
+            const response = await fetch("{% url 'detection:chatbot_interact' detection.id %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: new URLSearchParams({ user_input: input })
+            });
+            const data = await response.json();
+            const botMessage = document.createElement('div');
+            botMessage.className = 'bg-gray-100 text-gray-800 p-2 rounded-md text-sm mt-2';
+            botMessage.innerHTML = data.response;
+            chatbotContent.appendChild(botMessage);
+        } catch (error) {
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'bg-red-50 text-red-700 p-2 rounded-md text-sm mt-2';
+            errorMessage.textContent = 'Erreur : Impossible de contacter l\'assistant.';
+            chatbotContent.appendChild(errorMessage);
+        }
+
+        document.getElementById('chatbot-input').value = '';
+        chatbotContent.scrollTop = chatbotContent.scrollHeight;
+    }
+
+    document.getElementById('chatbot-input').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            sendChatbotMessage();
+        }
+    });
+
+    // Fonction pour valider/rejeter une catégorie individuellement (pour vidéos)
+    async function validateCategory(detectionId, categoryName, frameNumber, confidence, isValid) {
+        console.log(`validateCategory appelé: isValid=${isValid}, type=${typeof isValid}`);
+        
+        const row = document.querySelector(`tr[data-category="${categoryName}"][data-frame="${frameNumber || ''}"]`);
+        const container = row ? row.querySelector('.category-validation-container') : null;
+        
+        if (container) {
+            container.innerHTML = '<span class="text-xs text-gray-500">⏳ Traitement...</span>';
+        }
+
+        try {
+            const isValidStr = isValid ? 'true' : 'false';
+            console.log(`Envoi à serveur: is_valid=${isValidStr}`);
+            
+            const formData = new FormData();
+            formData.append('category_name', categoryName);
+            formData.append('is_valid', isValidStr);
+            formData.append('frame_number', frameNumber || '');
+            formData.append('confidence', confidence);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+            const response = await fetch(`/detection/validate-category/${detectionId}/`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            console.log(`Réponse serveur:`, data);
+
+            if (data.success) {
+                // Afficher le statut de validation immédiatement
+                console.log(`Affichage statut: isValid=${isValid}`);
+                if (container) {
+                    if (isValid) {
+                        container.innerHTML = '<span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">✓ Validée</span>';
+                    } else {
+                        container.innerHTML = '<span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded">✗ Rejetée</span>';
+                    }
+                }
+
+                // Mettre à jour le niveau de danger si changé
+                let badgeText = 'Sécurisé';
+                let badgeClass = 'bg-green-500 text-white';
+                
+                if (data.new_danger_level === 'HYPERDANGEROUS') {
+                    badgeClass = 'bg-red-500 text-white';
+                    badgeText = 'Danger Critique';
+                } else if (data.new_danger_level === 'DANGEROUS') {
+                    badgeClass = 'bg-yellow-400 text-gray-800';
+                    badgeText = 'Danger';
+                } else if (data.new_danger_level === 'NORMAL' || data.new_danger_level === null || data.new_danger_level === 'null') {
+                    badgeClass = 'bg-green-500 text-white';
+                    badgeText = 'Sécurisé';
+                }
+                
+                const dangerBadge = document.querySelector('.danger-level-badge');
+                if (dangerBadge) {
+                    const currentLevel = dangerBadge.textContent.trim();
+                    if (badgeText !== currentLevel) {
+                        // Le niveau a changé, mettre à jour
+                        dangerBadge.className = `danger-level-badge inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`;
+                        dangerBadge.textContent = badgeText;
+                        
+                        // Afficher une notification avec le nouveau niveau
+                        showNotification(`Catégorie "${categoryName}" ${isValid ? 'validée' : 'rejetée'}. Niveau de danger mis à jour : ${badgeText}`, 'success');
+                    } else {
+                        // Niveau inchangé
+                        showNotification(`Catégorie "${categoryName}" ${isValid ? 'validée' : 'rejetée'} avec succès`, 'success');
+                    }
+                } else {
+                    // Badge non trouvé, notification simple
+                    showNotification(`Catégorie "${categoryName}" ${isValid ? 'validée' : 'rejetée'} avec succès`, 'success');
+                }
+            } else {
+                throw new Error(data.error || 'Erreur inconnue');
+            }
+        } catch (error) {
+            console.error('Erreur:', error);
+            if (buttons) {
+                buttons.innerHTML = `
+                    <button onclick="validateCategory(${detectionId}, '${categoryName}', ${frameNumber || 'null'}, ${confidence}, true)" 
+                            class="validate-btn px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors"
+                            title="Valider cette catégorie">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button onclick="validateCategory(${detectionId}, '${categoryName}', ${frameNumber || 'null'}, ${confidence}, false)" 
+                            class="reject-btn px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
+                            title="Rejeter cette catégorie">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+            }
+            showNotification(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    // Fonction utilitaire pour afficher des notifications
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+        notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+</script>
+{% endblock %}

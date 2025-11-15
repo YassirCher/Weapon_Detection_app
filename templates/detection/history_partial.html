@@ -1,0 +1,154 @@
+{% load static %}
+<div class="container mx-auto p-4 sm:p-6 lg:p-8">
+    <div class="bg-white shadow-lg rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            ID
+                        </th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Utilisateur
+                        </th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Date
+                        </th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Catégorie
+                        </th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Statut
+                        </th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for detection in page_obj %}
+                    <tr class="hover:bg-gray-50 transition duration-150 ease-in-out">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{{ detection.id }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{{ detection.user.email }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                            {{ detection.detection_timestamp|date:"Y-m-d H:i" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                            {% for obj in detection.detected_objects %}
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {{ obj.category|capfirst }}
+                            </span>{% if not forloop.last %}{% endif %}
+                            {% endfor %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {% if detection.danger_level == 'HYPERDANGEROUS' %}
+                            <span
+                                class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 animate-pulse">
+                                Danger Critique
+                            </span>
+                            {% elif detection.danger_level == 'DANGEROUS' %}
+                            <span
+                                class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                Danger
+                            </span>
+                            {% else %}
+                            <span
+                                class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Sécurisé
+                            </span>
+                            {% endif %}
+                            {% if detection.is_simulated %}
+                            <span
+                                class="ml-2 px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-200 text-gray-800">
+                                Simulé
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="{% url 'detection:result' detection.id %}"
+                                class="text-indigo-600 hover:text-indigo-900 mr-4 transition duration-150 ease-in-out">
+                                <i class="fas fa-eye mr-1"></i> Voir
+                            </a>
+                            {% if not detection.validation %}
+                            <a href="{% url 'detection:validate' detection.id %}"
+                                class="text-green-600 hover:text-green-900 transition duration-150 ease-in-out">
+                                <i class="fas fa-check mr-1"></i> Valider
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">Aucune détection trouvée.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Pagination" class="mt-8 flex justify-center">
+        <ul class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+            {% if page_obj.has_previous %}
+            <li>
+                <a href="?page=1{% if class_filter %}&class_filter={{ class_filter }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if validation_status %}&validation_status={{ validation_status }}{% endif %}{% if date %}&date={{ date }}{% endif %}"
+                    class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition duration-150 ease-in-out"
+                    aria-label="First">
+                    <span aria-hidden="true">««</span>
+                </a>
+            </li>
+            <li>
+                <a href="?page={{ page_obj.previous_page_number }}{% if class_filter %}&class_filter={{ class_filter }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if validation_status %}&validation_status={{ validation_status }}{% endif %}{% if date %}&date={{ date }}{% endif %}"
+                    class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition duration-150 ease-in-out"
+                    aria-label="Previous">
+                    <span aria-hidden="true">«</span>
+                </a>
+            </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li>
+                <span
+                    class="relative inline-flex items-center px-4 py-2 border border-indigo-500 bg-indigo-500 text-sm font-semibold text-white">
+                    {{ num }}
+                </span>
+            </li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li>
+                <a href="?page={{ num }}{% if class_filter %}&class_filter={{ class_filter }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if validation_status %}&validation_status={{ validation_status }}{% endif %}{% if date %}&date={{ date }}{% endif %}"
+                    class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-150 ease-in-out">
+                    {{ num }}
+                </a>
+            </li>
+            {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+            <li>
+                <a href="?page={{ page_obj.next_page_number }}{% if class_filter %}&class_filter={{ class_filter }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if validation_status %}&validation_status={{ validation_status }}{% endif %}{% if date %}&date={{ date }}{% endif %}"
+                    class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition duration-150 ease-in-out"
+                    aria-label="Next">
+                    <span aria-hidden="true">»</span>
+                </a>
+            </li>
+            <li>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if class_filter %}&class_filter={{ class_filter }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if validation_status %}&validation_status={{ validation_status }}{% endif %}{% if date %}&date={{ date }}{% endif %}"
+                    class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition duration-150 ease-in-out"
+                    aria-label="Last">
+                    <span aria-hidden="true">»»</span>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>

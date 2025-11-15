@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Profil | Sécurité Urbaine{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    /* Animation d'entrée pour la carte */
+    .profile-card {
+        animation: fadeIn 0.5s ease-in;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    /* Style des inputs */
+    .form-input {
+        transition: all 0.3s ease;
+        border-width: 0 0 2px 0;
+        border-color: #d1d5db; /* gray-300 */
+        background: transparent;
+        padding: 0.5rem 0;
+    }
+    .form-input:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 2px 0 0 #0d6efd;
+        outline: none;
+    }
+    /* Ligne animée au survol du bouton */
+    .btn-hover {
+        position: relative;
+        transition: all 0.3s ease;
+    }
+    .btn-hover::after {
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 2px;
+        bottom: 0;
+        left: 0;
+        background-color: #ffffff;
+        transition: width 0.3s ease;
+    }
+    .btn-hover:hover::after {
+        width: 100%;
+    }
+    /* Style pour l'icône de caméra */
+    .camera-icon {
+        transition: all 0.3s ease;
+        opacity: 0.7;
+    }
+    .camera-icon:hover {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+    /* Conteneur de la photo */
+    .profile-pic-container {
+        position: relative;
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 font-inter">
+    <div class="profile-card bg-white shadow-lg rounded-xl overflow-hidden">
+        <!-- En-tête de la carte -->
+        <div class="bg-[#0d6efd] text-white px-6 py-4">
+            <h5 class="text-xl font-semibold flex items-center">
+                <i class="fas fa-user-circle mr-2"></i> Mon Profil
+            </h5>
+        </div>
+        <!-- Corps de la carte -->
+        <div class="p-8">
+            <div class="flex flex-col lg:flex-row gap-8">
+                <!-- Section photo et badge -->
+                <div class="flex-shrink-0 text-center lg:w-1/3">
+                    <div class="profile-pic-container">
+                        {% if user.profile_picture %}
+                            <img src="{{ user.profile_picture.url }}" alt="Photo de profil" 
+                                 class="w-36 h-36 rounded-full mx-auto mb-4 object-cover shadow-sm">
+                        {% else %}
+                            <div class="w-36 h-36 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                <i class="fas fa-user-circle text-gray-400 text-6xl"></i>
+                            </div>
+                        {% endif %}
+                        <!-- Icône de caméra -->
+                        <label for="profile_picture_input" class="camera-icon absolute bottom-2 right-2 bg-[#0d6efd] text-white rounded-full p-2 cursor-pointer">
+                            <i class="fas fa-camera"></i>
+                        </label>
+                        <input type="file" name="profile_picture" id="profile_picture_input" class="hidden" accept="image/*">
+                    </div>
+                    <span class="inline-block px-4 py-1.5 text-sm font-medium rounded-full
+                                 {% if user.is_administrator %}bg-red-600 text-white
+                                 {% elif user.is_supervisor %}bg-yellow-500 text-gray-900
+                                 {% else %}bg-blue-500 text-white{% endif %} shadow-sm">
+                        {% if user.is_administrator %}Administrateur
+                        {% elif user.is_supervisor %}Superviseur
+                        {% else %}Opérateur{% endif %}
+                    </span>
+                </div>
+                <!-- Section formulaire -->
+                <div class="flex-grow lg:w-2/3">
+                    <form method="post" enctype="multipart/form-data" class="space-y-6" id="profile-form">
+                        {% csrf_token %}
+                        <!-- Prénom -->
+                        <div>
+                            <label for="{{ form.first_name.id_for_label }}" 
+                                   class="block text-sm font-semibold text-gray-700 mb-2">Prénom</label>
+                            <input type="text" name="{{ form.first_name.name }}" id="{{ form.first_name.id_for_label }}"
+                                   value="{{ form.first_name.value|default_if_none:'' }}"
+                                   class="form-input block w-full text-gray-900 placeholder-gray-400">
+                            {% if form.first_name.errors %}
+                                <div class="text-red-600 text-sm mt-1">
+                                    {% for error in form.first_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <!-- Nom -->
+                        <div>
+                            <label for="{{ form.last_name.id_for_label }}" 
+                                   class="block text-sm font-semibold text-gray-700 mb-2">Nom</label>
+                            <input type="text" name="{{ form.last_name.name }}" id="{{ form.last_name.id_for_label }}"
+                                   value="{{ form.last_name.value|default_if_none:'' }}"
+                                   class="form-input block w-full text-gray-900 placeholder-gray-400">
+                            {% if form.last_name.errors %}
+                                <div class="text-red-600 text-sm mt-1">
+                                    {% for error in form.last_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <!-- Email -->
+                        <div>
+                            <label for="{{ form.email.id_for_label }}" 
+                                   class="block text-sm font-semibold text-gray-700 mb-2">Adresse e-mail</label>
+                            <input type="email" name="{{ form.email.name }}" id="{{ form.email.id_for_label }}"
+                                   value="{{ form.email.value|default_if_none:'' }}"
+                                   class="form-input block w-full text-gray-900 placeholder-gray-400">
+                            {% if form.email.errors %}
+                                <div class="text-red-600 text-sm mt-1">
+                                    {% for error in form.email.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <!-- Localisation -->
+                        <div>
+                            <label for="{{ form.location.id_for_label }}" 
+                                   class="block text-sm font-semibold text-gray-700 mb-2">Localisation</label>
+                            <input type="text" name="{{ form.location.name }}" id="{{ form.location.id_for_label }}"
+                                   value="{{ form.location.value|default_if_none:'' }}"
+                                   class="form-input block w-full text-gray-900 placeholder-gray-400">
+                            <p class="text-sm text-gray-500 mt-1">Votre localisation sera enregistrée avec vos détections.</p>
+                            {% if form.location.errors %}
+                                <div class="text-red-600 text-sm mt-1">
+                                    {% for error in form.location.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <!-- Bouton de soumission -->
+                        <div class="mt-8">
+                            <button type="submit" 
+                                    class="btn-hover w-full bg-[#0d6efd] text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center text-base font-semibold shadow-sm">
+                                <i class="fas fa-save mr-2"></i> Enregistrer les modifications
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const profilePicInput = document.getElementById('profile_picture_input');
+    const profileForm = document.getElementById('profile-form');
+
+    // Synchroniser l'input file avec le formulaire
+    profilePicInput.addEventListener('change', () => {
+        if (profilePicInput.files.length > 0) {
+            const file = profilePicInput.files[0];
+            const formData = new FormData(profileForm);
+            formData.set('profile_picture', file);
+
+            // Optionnel : Prévisualisation de l'image
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = document.querySelector('.profile-pic-container img') || 
+                            document.createElement('img');
+                if (!img.src) {
+                    img.className = 'w-36 h-36 rounded-full mx-auto mb-4 object-cover shadow-sm';
+                    img.alt = 'Photo de profil';
+                    const container = document.querySelector('.profile-pic-container');
+                    const defaultIcon = container.querySelector('.bg-gray-100');
+                    if (defaultIcon) defaultIcon.remove();
+                    container.prepend(img);
+                }
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Simuler un clic sur l'input file lorsque l'icône de caméra est cliquée
+    document.querySelector('.camera-icon').addEventListener('click', () => {
+        profilePicInput.click();
+    });
+});
+</script>
+{% endblock %}

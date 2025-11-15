@@ -1,0 +1,17 @@
+Django==5.2.7
+ultralytics
+opencv-python==4.12.0.88
+torch
+torchvision
+google-generativeai
+Pillow
+reportlab
+django-jazzmin
+pycocotools
+matplotlib
+seaborn
+scikit-learn
+numpy
+roboflow
+tqdm
+python-dotenv

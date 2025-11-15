@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Historique des Rapports | Sécurité Urbaine{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    /* Smoother transitions for buttons and table rows */
+    .action-btn {
+        transition: width 0.7s ease-in-out, background-color 0.3s ease-in-out, transform 0.3s ease-in-out;
+    }
+    .action-btn-text {
+        display: none;
+        opacity: 0;
+        transform: translateX(8px);
+        transition: opacity 0.7s ease-in-out, transform 0.7s ease-in-out, display 0.7s ease-in-out;
+    }
+    .group:hover .action-btn-text {
+        display: inline;
+        opacity: 1;
+        transform: translateX(0);
+    }
+    .pagination-btn {
+        transition: background-color 0.3s ease-in-out, transform 0.3s ease-in-out;
+    }
+    tr:hover {
+        background-color: #f1f5f9; /* gray-100 */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="bg-gray-50 font-inter py-6 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+        <article class="bg-white shadow-md rounded-xl overflow-hidden">
+            <!-- Header -->
+            <header class="bg-blue-600 text-white px-6 py-4 rounded-t-xl">
+                <h5 class="text-xl font-semibold flex items-center">
+                    <i class="fas fa-history mr-2"></i> Historique des Rapports
+                </h5>
+            </header>
+            <!-- Body -->
+            <div class="p-6">
+                <!-- Filter Form -->
+                <form method="get" class="mb-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="flex flex-col">
+                            <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Nom du rapport</label>
+                            <input type="text" id="name" name="name" value="{{ name_filter|default_if_none:'' }}" placeholder="Rechercher par nom" class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        {% if users %}
+                        <div class="flex flex-col">
+                            <label for="user" class="block text-sm font-medium text-gray-700 mb-2">Utilisateur</label>
+                            <select id="user" name="user" class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <option value="">Tous les utilisateurs</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}" {% if user_filter == user.id|stringformat:"s" %}selected{% endif %}>{{ user.email }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        <div class="flex flex-col">
+                            <label for="location" class="block text-sm font-medium text-gray-700 mb-2">Localisation</label>
+                            <select id="location" name="location" class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <option value="">Toutes les localisations</option>
+                                {% for value, label in location_choices %}
+                                <option value="{{ value }}" {% if location_filter == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="danger_level" class="block text-sm font-medium text-gray-700 mb-2">Niveau de danger</label>
+                            <select id="danger_level" name="danger_level" class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <option value="">Tous les niveaux</option>
+                                {% for value, label in danger_level_choices %}
+                                <option value="{{ value }}" {% if danger_level_filter == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="class" class="block text-sm font-medium text-gray-700 mb-2">Classe détectée</label>
+                            <select id="class" name="class" class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <option value="">Toutes les classes</option>
+                                {% for value, label in class_choices %}
+                                <option value="{{ value }}" {% if class_filter == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="date_from" class="block text-sm font-medium text-gray-700 mb-2">Date de début</label>
+                            <input type="date" id="date_from" name="date_from" value="{{ date_from|default_if_none:'' }}" class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="date_to" class="block text-sm font-medium text-gray-700 mb-2">Date de fin</label>
+                            <input type="date" id="date_to" name="date_to" value="{{ date_to|default_if_none:'' }}" class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div class="flex items-end space-x-2">
+                            <button type="submit" class="action-btn flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full hover:bg-blue-700 hover:w-auto hover:px-4 group hover:scale-105">
+                                <i class="fas fa-filter"></i>
+                                <span class="action-btn-text ml-2">Filtrer</span>
+                            </button>
+                            <a href="{% url 'detection:reports_history' %}" class="action-btn flex items-center justify-center w-10 h-10 bg-gray-500 text-white rounded-full hover:bg-gray-600 hover:w-auto hover:px-4 group hover:scale-105">
+                                <i class="fas fa-undo"></i>
+                                <span class="action-btn-text ml-2">Réinitialiser</span>
+                            </a>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Reports Table -->
+                {% if page_obj %}
+                <div class="overflow-x-auto">
+                    <table class="w-full table-auto text-sm text-gray-900">
+                        <thead class="bg-gray-200 text-gray-700 font-medium">
+                            <tr>
+                                <th class="px-4 py-3 text-left">Date</th>
+                                <th class="px-4 py-3 text-left">Nom du Rapport</th>
+                                <th class="px-4 py-3 text-left">Utilisateur</th>
+                                <th class="px-4 py-3 text-left">Localisation</th>
+                                <th class="px-4 py-3 text-left">Statistiques</th>
+                                <th class="px-4 py-3 text-left">Aperçu</th>
+                                <th class="px-4 py-3 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            {% for report in page_obj %}
+                            <tr class="odd:bg-gray-50">
+                                <td class="px-4 py-3">{{ report.created_at|date:"d/m/Y H:i" }}</td>
+                                <td class="px-4 py-3">{{ report.name|default:"Rapport sans nom" }}</td>
+                                <td class="px-4 py-3">{{ report.user.email }}</td>
+                                <td class="px-4 py-3">{{ report.location|default:"Non spécifiée" }}</td>
+                                <td class="px-4 py-3 flex flex-wrap gap-1">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">{{ report.stats.normal }} Normal</span>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">{{ report.stats.dangerous }} Dangereux</span>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">{{ report.stats.hyperdangerous }} Hyperdangereux</span>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{{ report.stats.total }} Total</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if report.preview_detections %}
+                                    <div class="grid grid-cols-2 gap-1 max-w-[104px]">
+                                        {% for detection in report.preview_detections|slice:":3" %}
+                                        <a href="{% url 'detection:analysis_results' report.id %}" class="{% if forloop.counter == 3 %}col-start-1{% endif %}">
+                                            <img src="{{ detection.uploaded_file.url }}" alt="Aperçu" class="w-12 h-12 rounded-md object-cover shadow-sm">
+                                        </a>
+                                        {% endfor %}
+                                        {% if report.stats.total > 3 %}
+                                        <span class="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white text-xs font-semibold rounded-full col-start-2">+{{ report.stats.total|add:"-3" }}</span>
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <span class="text-gray-500 text-sm">Aucun aperçu</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <a href="{% url 'detection:analysis_results' report.id %}" class="action-btn flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 hover:scale-105">
+                                        <i class="fas fa-eye mr-2"></i>
+                                        <span>Voir</span>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        </table>
+                    </div>
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                    <nav aria-label="Pagination" class="mt-6">
+                        <ul class="flex justify-center space-x-2 bg-white p-2 rounded-full shadow-md">
+                            {% if page_obj.has_previous %}
+                            <li>
+                                <a class="pagination-btn flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600 text-blue-200 hover:bg-blue-700 hover:text-white hover:scale-105 transition-all duration-300" href="?page={{ page_obj.previous_page_number }}{% if name_filter %}&name={{ name_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if location_filter %}&location={{ location_filter }}{% endif %}{% if danger_level_filter %}&danger_level={{ danger_level_filter }}{% endif %}{% if class_filter %}&class={{ class_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Previous">
+                                    <i class="fas fa-chevron-left text-sm"></i>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li>
+                                <span class="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed">
+                                    <i class="fas fa-chevron-left text-sm"></i>
+                                </span>
+                            </li>
+                            {% endif %}
+                            {% for num in page_obj.paginator.page_range %}
+                            <li>
+                                <a class="pagination-btn flex items-center justify-center w-9 h-9 rounded-lg {% if page_obj.number == num %}bg-blue-600 text-white font-semibold{% else %}bg-white hover:bg-blue-100 text-blue-600{% endif %} transition-all duration-300 hover:scale-105" href="?page={{ num }}{% if name_filter %}&name={{ name_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if location_filter %}&location={{ location_filter }}{% endif %}{% if danger_level_filter %}&danger_level={{ danger_level_filter }}{% endif %}{% if class_filter %}&class={{ class_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
+                            </li>
+                            {% endfor %}
+                            {% if page_obj.has_next %}
+                            <li>
+                                <a class="pagination-btn flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600 text-blue-200 hover:bg-blue-700 hover:text-white hover:scale-105 transition-all duration-300" href="?page={{ page_obj.next_page_number }}{% if name_filter %}&name={{ name_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if location_filter %}&location={{ location_filter }}{% endif %}{% if danger_level_filter %}&danger_level={{ danger_level_filter }}{% endif %}{% if class_filter %}&class={{ class_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Next">
+                                    <i class="fas fa-chevron-right text-sm"></i>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li>
+                                <span class="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed">
+                                    <i class="fas fa-chevron-right text-sm"></i>
+                                </span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    {% else %}
+                    <div class="bg-blue-100 text-blue-800 p-4 rounded-lg flex items-center">
+                        <i class="fas fa-info-circle mr-2"></i> Aucun rapport trouvé.
+                    </div>
+                    {% endif %}
+                </div>
+            </article>
+        </div>
+    </section>
+{% endblock %}

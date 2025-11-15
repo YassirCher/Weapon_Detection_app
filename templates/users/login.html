@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Connexion | Sécurité Urbaine{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    /* Animation d'entrée pour la carte */
+    .login-card {
+        animation: fadeIn 0.5s ease-in;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    /* Style des inputs */
+    .form-input {
+        transition: all 0.3s ease;
+        border-width: 0 0 2px 0;
+        border-color: #d1d5db; /* gray-300 */
+        background: transparent;
+        padding: 0.5rem 0;
+    }
+    .form-input:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 2px 0 0 #0d6efd;
+        outline: none;
+    }
+    /* Ligne animée au survol du bouton */
+    .btn-hover {
+        position: relative;
+        transition: all 0.3s ease;
+    }
+    .btn-hover::after {
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 2px;
+        bottom: 0;
+        left: 0;
+        background-color: #ffffff;
+        transition: width 0.3s ease;
+    }
+    .btn-hover:hover::after {
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-gray-50 font-inter px-4 sm:px-6 lg:px-8 mt-0 pt-0">
+    <div class="max-w-md mx-auto mt-10">
+        <div class="login-card bg-white shadow-lg rounded-xl overflow-hidden">
+            <!-- En-tête de la carte -->
+            <div class="bg-[#0d6efd] text-white px-6 py-4 text-center">
+                <h4 class="text-xl font-semibold flex items-center justify-center">
+                    <i class="fas fa-shield-alt mr-2"></i> Sécurité Urbaine
+                </h4>
+            </div>
+            <!-- Corps de la carte -->
+            <div class="p-6">
+                <h5 class="text-lg font-semibold text-gray-800 text-center mb-6">Connexion</h5>
+                
+                <!-- Erreurs globales placées juste au-dessus du formulaire -->
+                {% if form.non_field_errors %}
+                    <div class="bg-red-100 text-red-700 p-3 rounded-lg text-sm mt-2 mb-4">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <form method="post" action="{% url 'users:login' %}" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <!-- Email -->
+                    <div>
+                        <label for="{{ form.email.id_for_label }}" 
+                               class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-envelope mr-1"></i> {{ form.email.label }}
+                        </label>
+                        <input type="email" name="{{ form.email.name }}" id="{{ form.email.id_for_label }}"
+                               value="{{ form.email.value|default_if_none:'' }}"
+                               class="form-input block w-full text-gray-900 placeholder-gray-400">
+                        {% if form.email.errors %}
+                            <div class="text-red-600 text-sm mt-1">
+                                {% for error in form.email.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Mot de passe -->
+                    <div>
+                        <label for="{{ form.password.id_for_label }}" 
+                               class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-lock mr-1"></i> {{ form.password.label }}
+                        </label>
+                        <input type="password" name="{{ form.password.name }}" id="{{ form.password.id_for_label }}"
+                               class="form-input block w-full text-gray-900 placeholder-gray-400">
+                        {% if form.password.errors %}
+                            <div class="text-red-600 text-sm mt-1">
+                                {% for error in form.password.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Bouton de soumission -->
+                    <div>
+                        <button type="submit" 
+                                class="btn-hover w-full bg-[#0d6efd] text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center text-base font-semibold shadow-sm">
+                            <i class="fas fa-sign-in-alt mr-2"></i> Se connecter
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <!-- Pied de page -->
+            <div class="bg-gray-100 text-gray-600 text-center py-4">
+                <p class="text-sm">Contactez un administrateur si vous n'avez pas de compte.</p>
+                {% if app_settings.active_detection_model == 'simulation' %}
+                    <div class="mt-2">
+                        <span class="inline-block px-3 py-1 text-sm font-medium rounded-full bg-yellow-500 text-gray-900 shadow-sm">
+                            Mode Simulation
+                        </span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

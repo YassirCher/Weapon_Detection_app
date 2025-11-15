@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sécurité Urbaine{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom CSS for hover animations */
+        .nav-link-hover {
+            position: relative;
+            padding-bottom: 0.2rem;
+        }
+        
+        .nav-link-hover::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 0;
+            background-color: #ffffff;
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link-hover:hover::after {
+            width: 100%;
+        }
+        
+        /* Dropdown menu animation */
+        .dropdown-enter {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        
+        .dropdown-enter-active {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        
+        .dropdown-exit {
+            opacity: 1;
+        }
+        
+        .dropdown-exit-active {
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        
+        /* Custom alert colors */
+        .alert-success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border-color: #a7f3d0;
+        }
+        
+        .alert-error {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border-color: #fecaca;
+        }
+        
+        .alert-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border-color: #bfdbfe;
+        }
+        
+        .alert-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+            border-color: #fde68a;
+        }
+        
+        /* Mobile menu animation */
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        
+        .mobile-menu {
+            animation: slideIn 0.3s ease-out;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+    <div class="flex flex-col min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-[#0d6efd] text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center">
+                    <a href="{% url 'home' %}" class="flex items-center space-x-2 text-white hover:text-gray-200 transition-colors duration-300">
+                        <i class="fas fa-shield-alt text-xl"></i>
+                        <span class="text-xl font-bold">Sécurité Urbaine</span>
+                    </a>
+                </div>
+                
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-1">
+                    {% if user.is_authenticated %}
+                        <nav class="flex space-x-1">
+                            <a href="{% url 'home' %}" class="nav-link-hover px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-300 flex items-center">
+                                <i class="fas fa-home mr-2"></i> Accueil
+                            </a>
+                            
+                            <a href="{% url 'detection:upload' %}" class="nav-link-hover px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-300 flex items-center">
+                                <i class="fas fa-camera mr-2"></i> Nouvelle Détection
+                            </a>
+                            
+                            <a href="{% url 'detection:upload_multi' %}" class="nav-link-hover px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-300 flex items-center">
+                                <i class="fas fa-camera-retro mr-2"></i> Détection Multiple
+                            </a>
+                            
+                            <a href="{% url 'detection:history' %}" class="nav-link-hover px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-300 flex items-center">
+                                <i class="fas fa-history mr-2"></i> Historique
+                            </a>
+                            
+                            <a href="{% url 'detection:reports_history' %}" class="nav-link-hover px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-300 flex items-center">
+                                <i class="fas fa-folder mr-2"></i> Rapports
+                            </a>
+                            
+                            {% if user.is_supervisor or user.is_administrator %}
+                            <a href="{% url 'detection:flagged' %}" class="nav-link-hover px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-300 flex items-center">
+                                <i class="fas fa-flag mr-2"></i> Détections Signalées
+                            </a>
+                            {% endif %}
+                            
+                            {% if user.is_administrator %}
+                            <div class="relative group" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false">
+                                <button class="nav-link-hover px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-300 flex items-center">
+                                    <i class="fas fa-cogs mr-2"></i> Administration
+                                    <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                                </button>
+                                
+                                <div x-show="open" x-transition:enter="transition ease-out duration-200"
+                                     x-transition:enter-start="opacity-0 scale-95" 
+                                     x-transition:enter-end="opacity-100 scale-100"
+                                     x-transition:leave="transition ease-in duration-150" 
+                                     x-transition:leave-start="opacity-100 scale-100" 
+                                     x-transition:leave-end="opacity-0 scale-95"
+                                     class="absolute right-0 w-56 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                                    <div class="py-1">
+                                        <!-- Statistiques link removed as requested -->
+                                        <a href="{% url 'users:manage' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex items-center">
+                                            <i class="fas fa-users mr-2"></i> Gestion Utilisateurs
+                                        </a>
+                                        <a href="{% url 'core:settings' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex items-center">
+                                            <i class="fas fa-sliders-h mr-2"></i> Paramètres
+                                        </a>
+                                        <a href="{% url 'detection:categories' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex items-center">
+                                            <i class="fas fa-tags mr-2"></i> Catégories Dangereuses
+                                        </a>
+                                        <div class="border-t border-gray-200 my-1"></div>
+                                        <a href="{% url 'admin:index' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex items-center">
+                                            <i class="fas fa-toolbox mr-2"></i> Admin Django
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </nav>
+                    {% endif %}
+                </div>
+                
+                <!-- User Menu -->
+                <div class="hidden md:flex items-center space-x-1">
+                    {% if user.is_authenticated %}
+                        <div class="relative group" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false">
+                            <button class="flex items-center space-x-2 focus:outline-none rounded-full p-1 hover:bg-blue-700 transition-colors duration-300">
+                                {% if user.profile_picture %}
+                                    <img src="{{ user.profile_picture.url }}" alt="Profile" class="w-8 h-8 rounded-full object-cover">
+                                {% else %}
+                                    <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                                        <i class="fas fa-user text-white"></i>
+                                    </div>
+                                {% endif %}
+                                <span class="hidden lg:inline-flex items-center">
+                                    <span>{{ user.get_full_name|default:user.email }}</span>
+                                    <span class="ml-2 px-2 py-0.5 text-xs rounded-full {% if user.is_administrator %}bg-blue-500{% elif user.is_supervisor %}bg-blue-400{% else %}bg-gray-600{% endif %}">
+                                        {% if user.is_administrator %}Admin
+                                        {% elif user.is_supervisor %}Superviseur
+                                        {% else %}Opérateur{% endif %}
+                                    </span>
+                                    <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                                </span>
+                            </button>
+                            
+                            <div x-show="open" x-transition:enter="transition ease-out duration-200"
+                                 x-transition:enter-start="opacity-0 scale-95" 
+                                 x-transition:enter-end="opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-150" 
+                                 x-transition:leave-start="opacity-100 scale-100" 
+                                 x-transition:leave-end="opacity-0 scale-95"
+                                 class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                                <div class="py-1">
+                                    <a href="{% url 'users:profile' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex items-center">
+                                        <i class="fas fa-id-card mr-2"></i> Mon Profil
+                                    </a>
+                                    <div class="border-t border-gray-200 my-1"></div>
+                                    <a href="{% url 'users:logout' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex items-center">
+                                        <i class="fas fa-sign-out-alt mr-2"></i> Déconnexion
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'users:login' %}" class="px-3 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-700 transition-colors duration-300 flex items-center">
+                            <i class="fas fa-sign-in-alt mr-2"></i> Connexion
+                        </a>
+                    {% endif %}
+                </div>
+                
+                <!-- Mobile menu button -->
+                <div class="md:hidden flex items-center">
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-blue-700 focus:outline-none">
+                        <i class="fas fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile menu -->
+        <div x-show="mobileMenuOpen" @click.away="mobileMenuOpen = false" class="md:hidden bg-blue-800" x-data="{ mobileMenuOpen: false }">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'home' %}" class="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-blue-700 flex items-center">
+                        <i class="fas fa-home mr-2"></i> Accueil
+                    </a>
+                    
+                    <a href="{% url 'detection:upload' %}" class="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-blue-700 flex items-center">
+                        <i class="fas fa-camera mr-2"></i> Nouvelle Détection
+                    </a>
+                    
+                    <a href="{% url 'detection:upload_multi' %}" class="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-blue-700 flex items-center">
+                        <i class="fas fa-camera-retro mr-2"></i> Détection Multiple
+                    </a>
+                    
+                    <a href="{% url 'detection:history' %}" class="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-blue-700 flex items-center">
+                        <i class="fas fa-history mr-2"></i> Historique
+                    </a>
+                    
+                    <a href="{% url 'detection:reports_history' %}" class="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-blue-700 flex items-center">
+                        <i class="fas fa-folder mr-2"></i> Rapports
+                    </a>
+                    
+                    {% if user.is_supervisor or user.is_administrator %}
+                    <a href="{% url 'detection:flagged' %}" class="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-blue-700 flex items-center">
+                        <i class="fas fa-flag mr-2"></i> Détections Signalées
+                    </a>
+                    {% endif %}
+                    
+                    {% if user.is_administrator %}
+                    <div class="pt-4 pb-2 border-t border-blue-700">
+                        <span class="flex items-center px-3 py-1 text-sm font-medium text-blue-300">
+                            <i class="fas fa-cogs mr-2"></i> Administration
+                        </span>
+                        <div class="mt-2 space-y-1 pl-4">
+                            <a href="{% url 'dashboard:stats' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex items-center">
+                                <i class="fas fa-chart-bar mr-2"></i> Statistiques
+                            </a>
+                            <a href="{% url 'users:manage' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex items-center">
+                                <i class="fas fa-users mr-2"></i> Gestion Utilisateurs
+                            </a>
+                            <a href="{% url 'core:settings' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex items-center">
+                                <i class="fas fa-sliders-h mr-2"></i> Paramètres
+                            </a>
+                            <a href="{% url 'detection:categories' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex items-center">
+                                <i class="fas fa-tags mr-2"></i> Catégories Dangereuses
+                            </a>
+                            <div class="border-t border-gray-200 my-1"></div>
+                            <a href="{% url 'admin:index' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex items-center">
+                                <i class="fas fa-toolbox mr-2"></i> Admin Django
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="pt-4 pb-2 border-t border-blue-700">
+                        <div class="flex items-center px-3 py-2">
+                            {% if user.profile_picture %}
+                                <img src="{{ user.profile_picture.url }}" alt="Profile" class="w-8 h-8 rounded-full object-cover mr-3">
+                            {% else %}
+                                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center mr-3">
+                                    <i class="fas fa-user text-white"></i>
+                                </div>
+                            {% endif %}
+                            <div>
+                                <div class="text-sm font-medium text-white">{{ user.get_full_name|default:user.email }}</div>
+                                <div class="text-xs font-medium text-blue-300">
+                                    {% if user.is_administrator %}Admin
+                                    {% elif user.is_supervisor %}Superviseur
+                                    {% else %}Opérateur{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-2 space-y-1">
+                            <a href="{% url 'users:profile' %}" class="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-blue-700 flex items-center">
+                                <i class="fas fa-id-card mr-2"></i> Mon Profil
+                            </a>
+                            <a href="{% url 'users:logout' %}" class="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-blue-700 flex items-center">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Déconnexion
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <a href="{% url 'users:login' %}" class="block px-3 py-2 rounded-md text-base font-medium bg-blue-600 text-white flex items-center justify-center">
+                        <i class="fas fa-sign-in-alt mr-2"></i> Connexion
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Messages/Notifications -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert-{{ message.tags }} rounded-md p-4 mb-4 border alert-show" role="alert">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center">
+                            {% if message.tags == 'success' %}
+                                <i class="fas fa-check-circle mr-3"></i>
+                            {% elif message.tags == 'error' %}
+                                <i class="fas fa-exclamation-circle mr-3"></i>
+                            {% elif message.tags == 'info' %}
+                                <i class="fas fa-info-circle mr-3"></i>
+                            {% elif message.tags == 'warning' %}
+                                <i class="fas fa-exclamation-triangle mr-3"></i>
+                            {% endif %}
+                            <span>{{ message }}</span>
+                        </div>
+                        <button type="button" class="ml-auto -mx-1.5 -my-1.5 p-1.5 rounded-lg inline-flex items-center justify-center h-8 w-8 hover:bg-opacity-30 focus:outline-none" data-dismiss="alert">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+    
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+        {% block content %}{% endblock %}
+    </main>
+    <!-- Footer -->
+    <footer class="bg-gray-800 py-6 w-full mt-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="text-gray-300 text-sm mb-2">
+                Réalisé par Chergui Yassir
+            </div>
+            <div class="flex justify-center space-x-4 mb-2">
+                <a href="https://github.com/YassirCher" target="_blank" class="text-gray-300 hover:text-gray-100 transition-colors duration-300">
+                    <i class="fab fa-github text-2xl"></i>
+                </a>
+                <a href="https://ma.linkedin.com/in/yassir-chergui" target="_blank" class="text-gray-300 hover:text-gray-100 transition-colors duration-300">
+                    <i class="fab fa-linkedin text-2xl"></i>
+                </a>
+            </div>
+            <div class="text-gray-300 text-sm mb-2">
+                <a href="{% url 'home' %}" class="hover:text-blue-400 transition-colors duration-300 flex items-center justify-center">
+                    <i class="fas fa-shield-alt text-xl mr-2"></i> Urban Security
+                </a>
+            </div>
+            <div class="text-gray-300 text-sm mb-2">
+                <a href="http://www.umi.ac.ma" target="_blank" class="hover:text-blue-400 transition-colors duration-300 flex items-center justify-center">
+                    <i class="fas fa-university text-xl mr-2"></i> Université Moulay Ismail
+                </a>
+            </div>
+            <div class="text-gray-300 text-sm mb-2">
+                <a href="http://www.fs-umi.ac.ma" target="_blank" class="hover:text-blue-400 transition-colors duration-300 flex items-center justify-center">
+                    <i class="fas fa-graduation-cap text-xl mr-2"></i> Faculté des Sciences Meknès
+                </a>
+            </div>
+            <div class="text-gray-300 text-sm">
+                <span class="flex items-center justify-center">
+                    <i class="fas fa-copyright text-xl mr-2"></i> {% now "Y" %} Tous droits réservés
+                </span>
+                {% if app_settings.active_detection_model == 'simulation' %}
+                <span class="ml-2 px-2 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold inline-flex items-center">
+                    <i class="fas fa-flask mr-1"></i> Mode Simulation
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </footer>
+    </div>
+    
+    <!-- Alpine.js for interactivity -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.11.1/dist/cdn.min.js" defer></script>
+    
+    <!-- Custom JS -->
+    <script>
+        // Dismiss alert messages
+        document.addEventListener('DOMContentLoaded', function() {
+            const alertDismissButtons = document.querySelectorAll('[data-dismiss="alert"]');
+            
+            alertDismissButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const alert = this.closest('.alert-show');
+                    if (alert) {
+                        alert.style.opacity = '0';
+                        alert.style.transition = 'opacity 0.3s ease';
+                        setTimeout(() => {
+                            alert.remove();
+                        }, 300);
+                    }
+                });
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

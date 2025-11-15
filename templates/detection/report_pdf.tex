@@ -1,0 +1,126 @@
+\documentclass[a4paper,11pt]{article}
+
+% Packages nécessaires
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{ifthen} % Nécessaire pour \ifthenelse
+
+% Couleurs pour les niveaux de danger
+\definecolor{normalgreen}{RGB}{40,167,69}
+\definecolor{dangerousyellow}{RGB}{255,193,7}
+\definecolor{hyperdangerousred}{RGB}{220,53,69}
+
+% Configuration des en-têtes et pieds de page
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Rapport Sécurité Urbaine}
+\fancyhead[R]{ID: {{ report.id }}}
+\fancyfoot[C]{\thepage}
+
+% Format des sections
+\titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+
+% Police par défaut
+\usepackage{times}
+
+\begin{document}
+
+% Page de titre
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    {\Huge\bfseries Rapport d'Analyse de Sécurité Urbaine \par}
+    \vspace{1cm}
+    {\Large Rapport ID: {{ report.id }} \par}
+    \vspace{0.5cm}
+    {\large Nom du Rapport: {{ report.name }} \par}
+    \vspace{0.5cm}
+    {\large Date de Génération: {{ current_date }} \par}
+    \vspace{2cm}
+    {\large Préparé par: Système de Sécurité Urbaine \par}
+    \vfill
+\end{titlepage}
+
+% Résumé des statistiques
+\section{Résumé des Statistiques}
+Les statistiques globales du rapport sont les suivantes :
+
+\begin{itemize}[leftmargin=*]
+    \item \textcolor{normalgreen}{\textbf{Normale}}: {{ stats.normal }} détections
+    \item \textcolor{dangerousyellow}{\textbf{Dangereuse}}: {{ stats.dangerous }} détections
+    \item \textcolor{hyperdangerousred}{\textbf{Hyperdangereuse}}: {{ stats.hyperdangerous }} détections
+\end{itemize}
+
+% Catégories détectées
+\section{Catégories Détectées}
+Les catégories d'objets détectés dans ce rapport, avec leur nombre d'instances, sont listées ci-dessous :
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{Catégorie} & \textbf{Nombre d'Instances} \\
+        \midrule
+        {% for category, count in categories.items %}
+        {{ category }} & {{ count }} \\
+        {% endfor %}
+        \bottomrule
+    \end{tabular}
+    \caption{Répartition des catégories détectées}
+\end{table}
+
+% Détails des détections
+\section{Détails des Détections}
+Les détections individuelles sont détaillées ci-dessous :
+
+\begin{longtable}{p{0.2\textwidth}p{0.3\textwidth}p{0.2\textwidth}p{0.25\textwidth}}
+    \toprule
+    \textbf{Niveau de Danger} & \textbf{Date/Heure} & \textbf{Objets Détectés} & \textbf{Validation} \\
+    \midrule
+    \endhead
+    {% for detection in detections %}
+    \textbf{
+        \ifthenelse{\equal{ {{ detection.danger_level|default:"NORMAL" }} }{HYPERDANGEROUS}}%
+        {\textcolor{hyperdangerousred}{Hyperdangereuse}}%
+        {\ifthenelse{\equal{ {{ detection.danger_level|default:"NORMAL" }} }{DANGEROUS}}%
+            {\textcolor{dangerousyellow}{Dangereuse}}%
+            {\textcolor{normalgreen}{Normale}}}%
+    } \newline
+    {% if detection.is_simulated %}(Simulé){% endif %}
+    &
+    {{ detection.detection_timestamp|date:"d/m/Y H:i" }} &
+    {% for obj in detection.detected_objects %}
+        {% if obj.category %}
+            {{ obj.category }} ({{ obj.confidence|floatformat:2 }})
+            {% if not forloop.last %}, {% endif %}
+        {% else %}
+            Inconnu
+        {% endif %}
+    {% empty %}
+        Aucun
+    {% endfor %}
+    &
+    {% if detection.validation %}
+        \ifthenelse{\equal{ {{ detection.validation.is_correct|stringformat:"s" }} }{True}}%
+        {Correcte}%
+        {Incorrecte ({{ detection.validation.corrected_category|default:"Non spécifié" }})}
+    {% else %}
+        Non validé
+    {% endif %}
+    \\
+    \midrule
+    {% endfor %}
+\end{longtable}
+
+\end{document}

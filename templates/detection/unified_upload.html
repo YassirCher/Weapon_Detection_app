@@ -1,0 +1,585 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Détection Unifiée - Images & Vidéos | Sécurité Urbaine{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    body {
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Zone d'upload avec gradient et animations */
+    .upload-zone {
+        border: 3px dashed #3b82f6;
+        border-radius: 1.5rem;
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        min-height: 280px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .upload-zone::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+        opacity: 0;
+        transition: opacity 0.4s ease;
+    }
+    
+    .upload-zone:hover {
+        border-color: #2563eb;
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px rgba(59, 130, 246, 0.25);
+    }
+    
+    .upload-zone:hover::before {
+        opacity: 1;
+    }
+    
+    .upload-zone.drag-over {
+        border-color: #1d4ed8;
+        background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
+        box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.3);
+        transform: scale(1.02);
+    }
+    
+    /* Icône animée */
+    .media-icon {
+        font-size: 4rem;
+        color: #3b82f6;
+        animation: float 3s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+    
+    /* Prévisualisation des fichiers */
+    .file-preview {
+        animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideIn {
+        from { 
+            opacity: 0; 
+            transform: translateX(-20px);
+        }
+        to { 
+            opacity: 1; 
+            transform: translateX(0);
+        }
+    }
+    
+    /* Badges de type de fichier */
+    .file-type-badge {
+        transition: all 0.3s ease;
+    }
+    
+    .file-type-badge:hover {
+        transform: scale(1.1);
+    }
+    
+    /* Boutons avec effet de vague */
+    .btn-primary {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+    
+    .btn-primary:hover::before {
+        width: 400px;
+        height: 400px;
+    }
+    
+    .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    /* Spinner */
+    .spinner {
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top: 3px solid white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    /* Card avec ombre douce */
+    .card-container {
+        animation: fadeInUp 0.6s ease;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* Styles des inputs */
+    .form-input {
+        transition: all 0.3s ease;
+        border: 2px solid #e5e7eb;
+    }
+    
+    .form-input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        outline: none;
+    }
+    
+    /* Info cards */
+    .info-card {
+        transition: all 0.3s ease;
+    }
+    
+    .info-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-5xl mx-auto">
+        <!-- En-tête principal -->
+        <div class="card-container bg-white rounded-2xl shadow-2xl overflow-hidden mb-6">
+            <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white px-8 py-8">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-4xl font-bold mb-2 flex items-center">
+                            <i class="fas fa-shield-alt mr-4"></i>
+                            Détection Intelligente
+                        </h1>
+                        <p class="text-blue-100 text-lg">
+                            Système unifié de détection d'armes par intelligence artificielle
+                        </p>
+                    </div>
+                    <div class="hidden md:block">
+                        <div class="bg-white bg-opacity-20 rounded-full p-4">
+                            <i class="fas fa-brain text-5xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulaire -->
+            <form method="post" enctype="multipart/form-data" id="uploadForm" class="p-8">
+                {% csrf_token %}
+
+                <!-- Zone d'upload principale -->
+                <div class="mb-8">
+                    <label class="block text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-upload mr-2 text-blue-600"></i>
+                        Fichiers média à analyser
+                    </label>
+                    
+                    <div class="upload-zone flex flex-col items-center justify-center p-8" id="uploadZone">
+                        <input type="file" 
+                               name="media_files" 
+                               id="mediaFiles" 
+                               multiple 
+                               accept="image/jpeg,image/png,video/mp4,video/avi,video/quicktime,application/zip"
+                               class="hidden">
+                        
+                        <div class="text-center" id="uploadPrompt">
+                            <div class="media-icon mb-4">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">
+                                Glissez-déposez vos fichiers ici
+                            </h3>
+                            <p class="text-gray-600 mb-6 text-lg">
+                                ou cliquez pour parcourir votre ordinateur
+                            </p>
+                            <div class="flex flex-wrap justify-center gap-4 text-sm">
+                                <span class="file-type-badge bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-medium">
+                                    <i class="fas fa-image mr-1"></i> Images JPG, PNG
+                                </span>
+                                <span class="file-type-badge bg-red-100 text-red-700 px-4 py-2 rounded-full font-medium">
+                                    <i class="fas fa-video mr-1"></i> Vidéos MP4, AVI, MOV
+                                </span>
+                                <span class="file-type-badge bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full font-medium">
+                                    <i class="fas fa-file-archive mr-1"></i> Archives ZIP
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Zone de prévisualisation -->
+                        <div id="filePreview" class="hidden w-full mt-6 space-y-3"></div>
+                    </div>
+                </div>
+
+                <!-- Champs du formulaire -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- Nom du rapport -->
+                    <div>
+                        <label for="report_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-tag mr-1 text-blue-600"></i> Nom du rapport
+                        </label>
+                        <input type="text" 
+                               name="report_name" 
+                               id="report_name"
+                               class="form-input w-full px-4 py-3 rounded-lg"
+                               placeholder="Ex: Surveillance Métro Ligne 1">
+                        <p class="text-xs text-gray-500 mt-1">Optionnel - Un nom sera généré automatiquement</p>
+                    </div>
+
+                    <!-- Localisation -->
+                    <div>
+                        <label for="location" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-map-marker-alt mr-1 text-red-600"></i> Localisation
+                        </label>
+                        <input type="text" 
+                               name="location" 
+                               id="location"
+                               class="form-input w-full px-4 py-3 rounded-lg"
+                               placeholder="Ex: Station Châtelet, Paris">
+                        <p class="text-xs text-gray-500 mt-1">Lieu où la détection a été effectuée</p>
+                    </div>
+                </div>
+
+                <!-- Paramètres vidéo (affiché dynamiquement) -->
+                <div class="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-6 mb-6" 
+                     id="videoSettings" 
+                     style="display: none;">
+                    <h4 class="font-bold text-gray-800 mb-4 flex items-center text-lg">
+                        <i class="fas fa-cog mr-2 text-purple-600"></i>
+                        Paramètres de traitement vidéo
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div>
+                            <label for="video_frame_interval" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-sliders-h mr-1"></i> Intervalle d'analyse (frames)
+                            </label>
+                            <input type="number" 
+                                   name="video_frame_interval" 
+                                   id="video_frame_interval"
+                                   value="30"
+                                   min="1"
+                                   max="300"
+                                   class="form-input w-full px-4 py-3 rounded-lg">
+                        </div>
+                        <div class="bg-white rounded-lg p-4 border border-purple-200">
+                            <p class="text-sm text-gray-700">
+                                <strong>💡 Astuce :</strong><br>
+                                <span class="text-gray-600">
+                                    • 30 frames = ~1 frame/sec pour vidéo 30fps<br>
+                                    • Plus petit = plus précis mais plus long<br>
+                                    • Plus grand = plus rapide mais moins précis
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button type="submit" 
+                            class="btn-primary flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 px-8 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-indigo-700 transition duration-300 flex items-center justify-center shadow-lg"
+                            id="submitBtn">
+                        <i class="fas fa-search mr-3"></i>
+                        Lancer la détection
+                    </button>
+                    <a href="{% url 'dashboard:stats' %}" 
+                       class="bg-gray-200 text-gray-700 py-4 px-8 rounded-xl font-bold text-lg hover:bg-gray-300 transition duration-300 flex items-center justify-center">
+                        <i class="fas fa-times mr-3"></i>
+                        Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Informations et limites -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="info-card bg-white rounded-xl shadow-lg p-6 border-t-4 border-blue-500">
+                <div class="flex items-start">
+                    <div class="bg-blue-100 rounded-full p-3 mr-4">
+                        <i class="fas fa-image text-blue-600 text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 mb-1">Images</h3>
+                        <p class="text-sm text-gray-600">
+                            JPG, PNG<br>
+                            <span class="font-semibold">Max: 10 MB</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-card bg-white rounded-xl shadow-lg p-6 border-t-4 border-red-500">
+                <div class="flex items-start">
+                    <div class="bg-red-100 rounded-full p-3 mr-4">
+                        <i class="fas fa-video text-red-600 text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 mb-1">Vidéos</h3>
+                        <p class="text-sm text-gray-600">
+                            MP4, AVI, MOV<br>
+                            <span class="font-semibold">Max: 500 MB</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-card bg-white rounded-xl shadow-lg p-6 border-t-4 border-yellow-500">
+                <div class="flex items-start">
+                    <div class="bg-yellow-100 rounded-full p-3 mr-4">
+                        <i class="fas fa-file-archive text-yellow-600 text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 mb-1">Archives</h3>
+                        <p class="text-sm text-gray-600">
+                            ZIP uniquement<br>
+                            <span class="font-semibold">Max: 100 MB</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Note importante -->
+        <div class="mt-6 bg-indigo-50 border-l-4 border-indigo-500 p-6 rounded-r-xl">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-info-circle text-indigo-500 text-2xl"></i>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-bold text-indigo-900 mb-2">Note importante</h3>
+                    <p class="text-indigo-800 mb-2">
+                        Les vidéos sont analysées <strong>frame par frame</strong> et génèrent automatiquement une vidéo annotée avec les détections visualisées.
+                    </p>
+                    <p class="text-indigo-700 text-sm">
+                        ⏱️ Temps de traitement estimé : ~2-3 minutes pour 1 minute de vidéo (selon la résolution et le frame_interval)
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('mediaFiles');
+    const filePreview = document.getElementById('filePreview');
+    const uploadPrompt = document.getElementById('uploadPrompt');
+    const videoSettings = document.getElementById('videoSettings');
+    const submitBtn = document.getElementById('submitBtn');
+    const uploadForm = document.getElementById('uploadForm');
+    
+    // Click to browse
+    uploadZone.addEventListener('click', (e) => {
+        if (e.target !== uploadZone && !uploadZone.contains(e.target)) return;
+        fileInput.click();
+    });
+    
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadZone.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    // Highlight drop zone
+    ['dragenter', 'dragover'].forEach(eventName => {
+        uploadZone.addEventListener(eventName, () => {
+            uploadZone.classList.add('drag-over');
+        }, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        uploadZone.addEventListener(eventName, () => {
+            uploadZone.classList.remove('drag-over');
+        }, false);
+    });
+    
+    // Handle dropped files
+    uploadZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        fileInput.files = files;
+        handleFiles(files);
+    }, false);
+    
+    // Handle file selection
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+    
+    function handleFiles(files) {
+        if (files.length === 0) {
+            uploadPrompt.classList.remove('hidden');
+            filePreview.classList.add('hidden');
+            videoSettings.style.display = 'none';
+            return;
+        }
+        
+        uploadPrompt.classList.add('hidden');
+        filePreview.classList.remove('hidden');
+        filePreview.innerHTML = '';
+        
+        let hasVideo = false;
+        
+        Array.from(files).forEach((file, index) => {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-preview flex items-center justify-between bg-gradient-to-r from-white to-gray-50 p-4 rounded-xl border-2 border-gray-200 hover:border-blue-400 shadow-sm hover:shadow-md transition-all';
+            
+            const fileIcon = getFileIcon(file);
+            const fileSize = formatBytes(file.size);
+            const fileColor = getFileColor(file);
+            
+            if (isVideoFile(file.name)) {
+                hasVideo = true;
+            }
+            
+            fileItem.innerHTML = `
+                <div class="flex items-center flex-1">
+                    <div class="mr-4 text-3xl ${fileColor}">${fileIcon}</div>
+                    <div>
+                        <p class="font-semibold text-gray-800">${escapeHtml(file.name)}</p>
+                        <p class="text-sm text-gray-500">${fileSize} • ${getFileType(file.name)}</p>
+                    </div>
+                </div>
+                <button type="button" class="text-red-500 hover:text-red-700 hover:scale-110 transition-transform remove-file" data-index="${index}">
+                    <i class="fas fa-times-circle text-2xl"></i>
+                </button>
+            `;
+            
+            filePreview.appendChild(fileItem);
+        });
+        
+        // Show/hide video settings
+        videoSettings.style.display = hasVideo ? 'block' : 'none';
+        
+        // Add remove handlers
+        document.querySelectorAll('.remove-file').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const index = parseInt(e.currentTarget.dataset.index);
+                const dt = new DataTransfer();
+                Array.from(fileInput.files).forEach((file, i) => {
+                    if (i !== index) {
+                        dt.items.add(file);
+                    }
+                });
+                fileInput.files = dt.files;
+                handleFiles(fileInput.files);
+            });
+        });
+    }
+    
+    function getFileIcon(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (['jpg', 'jpeg', 'png'].includes(ext)) {
+            return '<i class="fas fa-image"></i>';
+        } else if (['mp4', 'avi', 'mov'].includes(ext)) {
+            return '<i class="fas fa-video"></i>';
+        } else if (ext === 'zip') {
+            return '<i class="fas fa-file-archive"></i>';
+        }
+        return '<i class="fas fa-file"></i>';
+    }
+    
+    function getFileColor(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (['jpg', 'jpeg', 'png'].includes(ext)) {
+            return 'text-blue-500';
+        } else if (['mp4', 'avi', 'mov'].includes(ext)) {
+            return 'text-red-500';
+        } else if (ext === 'zip') {
+            return 'text-yellow-500';
+        }
+        return 'text-gray-500';
+    }
+    
+    function getFileType(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        const types = {
+            'jpg': 'Image JPEG',
+            'jpeg': 'Image JPEG',
+            'png': 'Image PNG',
+            'mp4': 'Vidéo MP4',
+            'avi': 'Vidéo AVI',
+            'mov': 'Vidéo MOV',
+            'zip': 'Archive ZIP'
+        };
+        return types[ext] || 'Fichier';
+    }
+    
+    function isVideoFile(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        return ['mp4', 'avi', 'mov', 'mkv'].includes(ext);
+    }
+    
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+    
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+    
+    // Form submission
+    uploadForm.addEventListener('submit', (e) => {
+        if (fileInput.files.length === 0) {
+            e.preventDefault();
+            alert('Veuillez sélectionner au moins un fichier à analyser.');
+            return;
+        }
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<div class="spinner mr-3"></div> Traitement en cours... Veuillez patienter';
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catégories Dangereuses | Sécurité Urbaine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .animate-hover:hover {
+            transform: translateY(-2px);
+            transition: all 0.2s ease-in-out;
+        }
+        .shadow-soft {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    {% extends 'base.html' %} 
+    {% load static %}  
+
+    {% block title %}Catégories Dangereuses | Sécurité Urbaine{% endblock %}  
+
+    {% block content %} 
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="bg-white rounded-xl shadow-soft overflow-hidden animate-hover">
+            <div class="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4 flex justify-between items-center">
+                <h5 class="text-xl font-semibold text-white flex items-center">
+                    <i class="fas fa-tags mr-3"></i>Gestion des Catégories Dangereuses
+                </h5>
+                <a href="{% url 'detection:add_category' %}" class="inline-flex items-center px-4 py-2 bg-white text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-50 transition duration-150 ease-in-out">
+                    <i class="fas fa-plus mr-2"></i>Nouvelle Catégorie
+                </a>
+            </div>
+            
+            <div class="p-6">
+                {% if categories %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Créé par</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date de création</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for category in categories %}
+                            <tr class="hover:bg-gray-50 transition duration-150 ease-in-out">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ category.name }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ category.description|truncatechars:50 }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {% if category.is_active %}
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>
+                                    {% else %}
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ category.created_by.get_full_name|default:category.created_by.email|default:"--" }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ category.created_at|date:"d/m/Y H:i" }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <div class="flex space-x-2">
+                                        <a href="{% url 'detection:edit_category' category.id %}" class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition duration-150 ease-in-out">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'detection:delete_category' category.id %}" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition duration-150 ease-in-out">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="rounded-md bg-blue-50 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-info-circle text-blue-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-blue-800">Information</h3>
+                            <div class="mt-2 text-sm text-blue-700">
+                                <p>Aucune catégorie dangereuse n'a été définie. <a href="{% url 'detection:add_category' %}" class="font-medium text-blue-800 hover:text-blue-600 underline">Créer une nouvelle catégorie</a>.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="bg-gray-50 px-6 py-3 border-t border-gray-200">
+                <div class="text-sm text-gray-500 flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-gray-400"></i>
+                    Les catégories actives seront utilisées pour identifier les objets dangereux lors des détections.
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+</body>
+</html>

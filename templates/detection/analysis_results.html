@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Résultats de l'Analyse | Sécurité Urbaine{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
+    <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="bg-blue-700 text-white px-6 py-5 flex flex-col sm:flex-row justify-between items-center rounded-t-xl">
+            <h1 class="text-2xl sm:text-3xl font-bold flex items-center mb-4 sm:mb-0">
+                <i class="fas fa-file-alt mr-3"></i> Rapport {{ report.id }} - {{ report.name }}
+            </h1>
+            <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <form method="get" class="flex items-center">
+                    <label for="class_filter" class="sr-only">Filtrer par classe</label>
+                    <select name="class_filter" id="class_filter" class="block w-full sm:w-auto p-2 border border-blue-400 rounded-md bg-blue-600 text-white text-sm focus:ring-blue-300 focus:border-blue-300 transition duration-200 ease-in-out cursor-pointer hover:bg-blue-500" onchange="this.form.submit()">
+                        <option value="">Toutes les classes</option>
+                        {% for cls, display in class_choices %}
+                        <option value="{{ cls }}" {% if class_filter == cls %}selected{% endif %}>{{ display }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                <div class="flex space-x-3">
+                    <a href="{% url 'detection:reports_history' %}" class="group relative flex items-center justify-center p-3 rounded-md text-sm font-semibold transition-all duration-300 ease-in-out shadow bg-blue-500 hover:bg-blue-400 text-white overflow-hidden">
+                        <i class="fas fa-arrow-left"></i>
+                        <span class="ml-0 opacity-0 w-0 group-hover:ml-2 group-hover:opacity-100 group-hover:w-auto transition-all duration-300 ease-out whitespace-nowrap">Retour à l'Historique</span>
+                    </a>
+                    <a href="{% url 'detection:download_report_pdf' report.id %}" class="group relative flex items-center justify-center p-3 rounded-md text-sm font-semibold transition-all duration-300 ease-in-out shadow bg-blue-500 hover:bg-blue-400 text-white overflow-hidden">
+                        <i class="fas fa-download"></i>
+                        <span class="ml-0 opacity-0 w-0 group-hover:ml-2 group-hover:opacity-100 group-hover:w-auto transition-all duration-300 ease-out whitespace-nowrap">Télécharger PDF</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <div class="mb-8 p-4 bg-gray-50 rounded-lg shadow-inner border border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Statistiques du Rapport</h2>
+                <div class="flex flex-wrap gap-4">
+                    <span class="badge bg-green-500 text-white clickable-badge px-4 py-2 rounded-full text-base font-medium transition duration-300 ease-in-out hover:opacity-85" data-danger-level="NORMAL">
+                        {{ stats.normal }} Normale
+                    </span>
+                    <span class="badge bg-yellow-500 text-gray-900 clickable-badge px-4 py-2 rounded-full text-base font-medium transition duration-300 ease-in-out hover:opacity-85" data-danger-level="DANGEROUS">
+                        {{ stats.dangerous }} Dangereuse
+                    </span>
+                    <span class="badge bg-red-600 text-white clickable-badge px-4 py-2 rounded-full text-base font-medium transition duration-300 ease-in-out hover:opacity-85" data-danger-level="HYPERDANGEROUS">
+                        {{ stats.hyperdangerous }} Hyperdangereuse
+                    </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 detection-grid" id="detectionGrid">
+                {% if detections %}
+                    {% for detection in detections %}
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 detection-item transform hover:scale-105 transition duration-300 ease-in-out"
+                         data-categories="{% for obj in detection.detected_objects %}{% if obj.category %}{{ obj.category|lower }}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}"
+                         data-danger-level="{{ detection.danger_level|default:'NORMAL' }}">
+                        <div class="px-4 py-3 text-sm font-semibold flex justify-between items-center
+                            {% if detection.danger_level == 'HYPERDANGEROUS' %}bg-red-700 text-white{% elif detection.danger_level == 'DANGEROUS' %}bg-yellow-500 text-gray-900{% else %}bg-green-600 text-white{% endif %}">
+                            <span>{{ detection.danger_level|default:"Normale" }}</span>
+                            {% if detection.is_simulated %}
+                            <span class="ml-2 bg-gray-200 text-gray-800 px-2 py-0.5 rounded-full text-xs font-medium">Simulé</span>
+                            {% endif %}
+                        </div>
+                        <div class="relative w-full h-48 bg-gray-200 flex items-center justify-center overflow-hidden">
+                            {% if detection.media_type == 'VIDEO' %}
+                                <video src="{{ detection.uploaded_file.url }}" class="w-full h-full object-cover detection-video" controls preload="metadata">
+                                    Votre navigateur ne supporte pas la lecture vidéo.
+                                </video>
+                            {% else %}
+                                <img src="{{ detection.uploaded_file.url }}" class="w-full h-full object-cover detection-image opacity-0 transition-opacity duration-300" alt="Image analysée" loading="lazy" data-image-url="{{ detection.uploaded_file.url }}">
+                                <button class="absolute bottom-3 right-3 bg-gray-800 bg-opacity-70 text-white p-2 rounded-full hover:bg-opacity-90 transition-all duration-200 transform hover:scale-110 focus:outline-none" title="Agrandir l'image" data-modal-target="#imageModal">
+                                    <i class="fas fa-search-plus text-lg"></i>
+                                </button>
+                            {% endif %}
+                        </div>
+                        <div class="p-4 text-gray-700 text-sm">
+                            <p class="mb-2"><strong class="text-gray-900">Détecté le :</strong> {{ detection.detection_timestamp|date:"d/m/Y H:i" }}</p>
+                            {% if detection.media_type == 'VIDEO' %}
+                                <p class="mb-2"><strong class="text-gray-900">Type :</strong> <span class="text-purple-600 font-semibold">Vidéo</span></p>
+                                {% if detection.video_metadata %}
+                                    <p class="mb-2"><strong class="text-gray-900">Durée :</strong> {{ detection.video_metadata.duration|floatformat:1 }}s</p>
+                                    <p class="mb-2"><strong class="text-gray-900">FPS :</strong> {{ detection.video_metadata.fps|floatformat:0 }}</p>
+                                    <p class="mb-2"><strong class="text-gray-900">Frames analysées :</strong> {{ detection.frames_analyzed }}</p>
+                                {% endif %}
+                                {% if detection.processing_duration %}
+                                    <p class="mb-2"><strong class="text-gray-900">Temps de traitement :</strong> {{ detection.processing_duration|floatformat:1 }}s</p>
+                                {% endif %}
+                            {% endif %}
+                            <p class="mb-2"><strong class="text-gray-900">Objets :</strong>
+                                <span class="block mt-1 detected-objects break-words">
+                                    {% for obj in detection.detected_objects %}
+                                        {% if obj.category %}
+                                            {{ obj.category|capfirst }} (<span class="font-mono">{{ obj.confidence|floatformat:2 }}</span>)
+                                            {% if detection.media_type == 'VIDEO' and obj.frame %} @ frame {{ obj.frame }}{% endif %}
+                                            {% if not forloop.last %}, {% endif %}
+                                        {% else %}
+                                            Inconnu{% if not forloop.last %}, {% endif %}
+                                        {% endif %}
+                                    {% empty %}
+                                        Aucun
+                                    {% endfor %}
+                                </span>
+                            </p>
+                            {% if detection.validation %}
+                                <p class="mt-3">
+                                    <strong class="text-gray-900">Validation :</strong>
+                                    {% if detection.validation.is_correct %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-check mr-1"></i> Correcte</span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800"><i class="fas fa-times mr-1"></i> Incorrecte ({{ detection.validation.corrected_category|default:"Non spécifié" }})</span>
+                                    {% endif %}
+                                </p>
+                            {% else %}
+                                <form method="post" action="{% url 'detection:validate' detection.id %}" class="validation-form mt-4" id="validation-form-{{ detection.id }}">
+                                    {% csrf_token %}
+                                    <div class="flex space-x-2 mb-3">
+                                        <button type="submit" class="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-sm font-semibold transition duration-200 ease-in-out validate-btn" name="is_correct" value="True">
+                                            <i class="fas fa-check mr-2"></i> Valider
+                                        </button>
+                                        <button type="button" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm font-semibold transition duration-200 ease-in-out reject-btn" data-collapse-target="#reject-fields-{{ detection.id }}">
+                                            <i class="fas fa-times mr-2"></i> Rejeter
+                                        </button>
+                                    </div>
+                                    <div id="reject-fields-{{ detection.id }}" class="hidden space-y-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1" for="id_corrected_category_{{ detection.id }}">Catégorie réelle</label>
+                                            <input type="text" name="corrected_category" class="block w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500" id="id_corrected_category_{{ detection.id }}" placeholder="Ex: arme, véhicule" maxlength="100">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1" for="id_comments_{{ detection.id }}">Commentaires</label>
+                                            <textarea name="comments" class="block w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 resize-y" id="id_comments_{{ detection.id }}" rows="2" placeholder="Détails additionnels (optionnel)"></textarea>
+                                        </div>
+                                        <button type="submit" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-semibold transition duration-200 ease-in-out confirm-btn" id="confirm-btn-{{ detection.id }}">
+                                            <i class="fas fa-check-circle mr-2"></i> Confirmer Rejet
+                                        </button>
+                                    </div>
+                                    <input type="hidden" name="is_correct" value="">
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-span-full">
+                        <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-md text-center" role="alert">
+                            <i class="fas fa-info-circle mr-2"></i>Aucune détection dans ce rapport.
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="col-span-full">
+                    <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-md text-center" role="alert">
+                        <i class="fas fa-info-circle mr-2"></i>Aucune détection dans ce rapport.
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div id="imageModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden" aria-labelledby="imageModalLabel" aria-hidden="true">
+                <div class="bg-white rounded-lg shadow-xl overflow-hidden max-w-4xl w-full">
+                    <div class="bg-blue-700 text-white px-5 py-4 flex justify-between items-center rounded-t-lg">
+                        <h5 class="text-xl font-semibold" id="imageModalLabel">Image Analysée</h5>
+                        <button type="button" class="text-white hover:text-gray-200 transition" aria-label="Close" data-dismiss-modal>
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+                    <div class="p-4 flex justify-center items-center">
+                        <img id="modalImage" src="" class="max-w-full max-h-[70vh] object-contain rounded" alt="Image analysée">
+                    </div>
+                </div>
+            </div>
+
+            {% if detections.has_other_pages %}
+            <nav aria-label="Page navigation" class="mt-8">
+                <ul class="flex justify-center items-center space-x-3">
+                    {% if detections.has_previous %}
+                    <li>
+                        <a class="flex items-center justify-center w-10 h-10 rounded-full bg-white border border-blue-400 text-blue-600 hover:bg-blue-500 hover:text-white transition duration-300 ease-in-out shadow-sm" href="?page={{ detections.previous_page_number }}{% if class_filter %}&class_filter={{ class_filter }}{% endif %}" aria-label="Previous">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li>
+                        <span class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 text-gray-500 cursor-not-allowed shadow-sm">
+                            <i class="fas fa-chevron-left"></i>
+                        </span>
+                    </li>
+                    {% endif %}
+                    <li>
+                        <span class="px-4 py-2 text-gray-700 text-lg font-medium">Page {{ detections.number }} sur {{ detections.paginator.num_pages }}</span>
+                    </li>
+                    {% if detections.has_next %}
+                    <li>
+                        <a class="flex items-center justify-center w-10 h-10 rounded-full bg-white border border-blue-400 text-blue-600 hover:bg-blue-500 hover:text-white transition duration-300 ease-in-out shadow-sm" href="?page={{ detections.next_page_number }}{% if class_filter %}&class_filter={{ class_filter }}{% endif %}" aria-label="Next">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li>
+                        <span class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 text-gray-500 cursor-not-allowed shadow-sm">
+                            <i class="fas fa-chevron-right"></i>
+                        </span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Lazy loading des images avec un placeholder
+    const images = document.querySelectorAll('.detection-image');
+    images.forEach(img => {
+        if (img.complete) {
+            img.classList.add('loaded'); // Mark as loaded if already complete (cached)
+            img.classList.remove('opacity-0');
+        } else {
+            img.addEventListener('load', () => {
+                img.classList.add('loaded');
+                img.classList.remove('opacity-0');
+            });
+            img.addEventListener('error', () => {
+                // Fallback: display an error icon or a broken image placeholder
+                img.classList.add('loaded'); // Still mark as loaded to remove opacity-0
+                img.src = "{% static 'path/to/placeholder_error_image.png' %}"; // Replace with your actual error placeholder image path
+                img.alt = "Image non disponible";
+                img.classList.remove('opacity-0');
+            });
+        }
+    });
+
+    // Gestion de la modale unique (avec Tailwind, sans Bootstrap JS)
+    const imageModal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    const expandButtons = document.querySelectorAll('[data-modal-target="#imageModal"]');
+    const dismissModalButton = imageModal.querySelector('[data-dismiss-modal]');
+
+    expandButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const imageUrl = this.previousElementSibling.getAttribute('data-image-url');
+            modalImage.setAttribute('src', imageUrl);
+            imageModal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden'); // Prevent scrolling body when modal is open
+        });
+    });
+
+    dismissModalButton.addEventListener('click', function() {
+        imageModal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    });
+
+    // Close modal when clicking outside the content
+    imageModal.addEventListener('click', function(e) {
+        if (e.target === imageModal) {
+            imageModal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !imageModal.classList.contains('hidden')) {
+            imageModal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+    });
+
+    // Filtrage par niveau de danger (côté client)
+    const badges = document.querySelectorAll('.clickable-badge');
+    const detectionItems = document.querySelectorAll('.detection-item');
+    let activeFilter = null; // To track currently active filter
+
+    badges.forEach(badge => {
+        badge.addEventListener('click', function() {
+            const selectedDangerLevel = this.getAttribute('data-danger-level');
+
+            if (activeFilter === selectedDangerLevel) {
+                // If the same badge is clicked again, deactivate filter
+                activeFilter = null;
+                badges.forEach(b => b.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-2'));
+            } else {
+                // Activate new filter
+                activeFilter = selectedDangerLevel;
+                badges.forEach(b => b.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-2'));
+                this.classList.add('ring-2', 'ring-blue-400', 'ring-offset-2'); // Add ring for active state
+            }
+
+            detectionItems.forEach(detection => {
+                const dangerLevel = detection.getAttribute('data-danger-level');
+                const isVisible = activeFilter === null || dangerLevel === activeFilter;
+                detection.style.display = isVisible ? 'block' : 'none';
+            });
+        });
+    });
+
+    // Gestion du formulaire de validation (dépliement)
+    const rejectButtons = document.querySelectorAll('.reject-btn');
+    rejectButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-collapse-target');
+            const targetElement = document.querySelector(targetId);
+
+            if (targetElement.classList.contains('hidden')) {
+                targetElement.classList.remove('hidden');
+                // Set is_correct to False only when 'Reject' section is opened
+                const form = this.closest('form');
+                if (form) {
+                    form.querySelector('input[name="is_correct"]').value = 'False';
+                }
+            } else {
+                targetElement.classList.add('hidden');
+                // Reset is_correct value when 'Reject' section is closed
+                const form = this.closest('form');
+                if (form) {
+                    form.querySelector('input[name="is_correct"]').value = '';
+                }
+            }
+        });
+    });
+
+    // Set is_correct to True for 'Valider' button
+    const validateButtons = document.querySelectorAll('.validate-btn');
+    validateButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const form = this.closest('form');
+            if (form) {
+                form.querySelector('input[name="is_correct"]').value = 'True';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

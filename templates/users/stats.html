@@ -1,0 +1,544 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Tableau de Bord - Détails Statistiques{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    /* Ligne animée au survol des boutons */
+    .btn-hover {
+        position: relative;
+        transition: all 0.3s ease;
+    }
+    .btn-hover::after {
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 2px;
+        bottom: 0;
+        left: 0;
+        background-color: #ffffff;
+        transition: width 0.3s ease;
+    }
+    .btn-hover:hover::after {
+        width: 100%;
+    }
+    /* Animation de chargement pour le tableau */
+    #detection-details {
+        transition: opacity 0.3s ease;
+    }
+    .loading {
+        opacity: 0.5;
+    }
+    /* Animation pour les cartes au survol */
+    .stat-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    /* Conteneur responsive pour les graphiques */
+    .chart-container {
+        max-width: 100%;
+        margin: 0 auto;
+    }
+    @media (min-width: 640px) {
+        .chart-container {
+            max-width: 500px;
+        }
+    }
+    @media (min-width: 768px) {
+        .chart-container {
+            max-width: 600px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 font-inter">
+    <!-- Titre principal -->
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">Tableau de Bord - Détails Statistiques</h1>
+
+    <!-- Filtres -->
+    <div class="bg-white shadow-md rounded-lg p-6 mb-8">
+        <form method="POST" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div>
+                <label for="filter" class="block text-sm font-semibold text-gray-700 mb-1">Période</label>
+                <select name="filter" id="filter" 
+                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300">
+                    <option value="all" {% if filter_type == 'all' %}selected{% endif %}>Tout</option>
+                    <option value="day" {% if filter_type == 'day' %}selected{% endif %}>Aujourd'hui</option>
+                    <option value="week" {% if filter_type == 'week' %}selected{% endif %}>Cette semaine</option>
+                    <option value="month" {% if filter_type == 'month' %}selected{% endif %}>Ce mois</option>
+                    <option value="custom" {% if filter_type == 'custom' %}selected{% endif %}>Personnalisé</option>
+                </select>
+            </div>
+            <div>
+                <label for="start_date" class="block text-sm font-semibold text-gray-700 mb-1">Date de début</label>
+                <input type="date" name="start_date" id="start_date" value="{{ start_date }}"
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300">
+            </div>
+            <div>
+                <label for="end_date" class="block text-sm font-semibold text-gray-700 mb-1">Date de fin</label>
+                <input type="date" name="end_date" id="end_date" value="{{ end_date }}"
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300">
+            </div>
+            {% if user.is_supervisor %}
+            <div>
+                <label for="operator_id" class="block text-sm font-semibold text-gray-700 mb-1">Opérateur</label>
+                <select name="operator_id" id="operator_id" 
+                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300">
+                    <option value="">Tous les opérateurs</option>
+                    {% for operator in operators %}
+                    <option value="{{ operator.id }}" {% if selected_operator == operator.id|stringformat:"s" %}selected{% endif %}>
+                        {{ operator.email }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="sm:col-span-2 lg:col-span-4 flex justify-end space-x-4 mt-4">
+                <button type="submit" class="btn-hover bg-[#0d6efd] text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-all duration-300">
+                    Filtrer
+                </button>
+                <a href="?export=csv" class="btn-hover bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition-all duration-300">
+                    Exporter CSV
+                </a>
+                <a href="?export=pdf" class="btn-hover bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 transition-all duration-300">
+                    Exporter PDF
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Statistiques générales -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="stat-card bg-white shadow-md rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900">Total Détections</h3>
+            <p class="text-4xl font-bold text-[#0d6efd] mt-2">{{ total_detections }}</p>
+        </div>
+        <div class="stat-card bg-white shadow-md rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900">Total Rapports</h3>
+            <p class="text-4xl font-bold text-[#0d6efd] mt-2">{{ total_reports }}</p>
+        </div>
+        <div class="stat-card bg-white shadow-md rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900">Détections Aujourd'hui</h3>
+            <p class="text-4xl font-bold text-[#0d6efd] mt-2">{{ today_detections }}</p>
+        </div>
+        <div class="stat-card bg-white shadow-md rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900">Taux de Danger</h3>
+            <p class="text-4xl font-bold text-red-500 mt-2">{{ danger_rate }}%</p>
+            <p class="text-xs text-gray-500 mt-1">{{ detections_with_danger }} détections dangereuses</p>
+        </div>
+    </div>
+
+    <!-- ==================== NOUVELLES STATS: Images vs Vidéos ==================== -->
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">
+            <i class="fas fa-photo-video mr-2 text-blue-600"></i>Statistiques par Type de Média
+        </h2>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Images -->
+        <div class="stat-card bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg rounded-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold opacity-90">Images</h3>
+                    <p class="text-4xl font-bold mt-2">{{ total_images }}</p>
+                </div>
+                <i class="fas fa-image text-5xl opacity-20"></i>
+            </div>
+            <div class="mt-4 pt-4 border-t border-white border-opacity-20 grid grid-cols-3 gap-2 text-xs">
+                <div class="text-center">
+                    <div class="font-bold text-lg">{{ safe_images }}</div>
+                    <div class="opacity-75">Sûres</div>
+                </div>
+                <div class="text-center">
+                    <div class="font-bold text-lg">{{ dangerous_images }}</div>
+                    <div class="opacity-75">Danger</div>
+                </div>
+                <div class="text-center">
+                    <div class="font-bold text-lg">{{ hyperdangerous_images }}</div>
+                    <div class="opacity-75">Critique</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vidéos -->
+        <div class="stat-card bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg rounded-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold opacity-90">Vidéos</h3>
+                    <p class="text-4xl font-bold mt-2">{{ total_videos }}</p>
+                </div>
+                <i class="fas fa-video text-5xl opacity-20"></i>
+            </div>
+            <div class="mt-4 pt-4 border-t border-white border-opacity-20 grid grid-cols-3 gap-2 text-xs">
+                <div class="text-center">
+                    <div class="font-bold text-lg">{{ safe_videos }}</div>
+                    <div class="opacity-75">Sûres</div>
+                </div>
+                <div class="text-center">
+                    <div class="font-bold text-lg">{{ dangerous_videos }}</div>
+                    <div class="opacity-75">Danger</div>
+                </div>
+                <div class="text-center">
+                    <div class="font-bold text-lg">{{ hyperdangerous_videos }}</div>
+                    <div class="opacity-75">Critique</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Frames Analysées (Vidéos) -->
+        <div class="stat-card bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg rounded-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold opacity-90">Frames Analysées</h3>
+                    <p class="text-3xl font-bold mt-2">{{ total_frames_analyzed|floatformat:0 }}</p>
+                </div>
+                <i class="fas fa-film text-5xl opacity-20"></i>
+            </div>
+            <div class="mt-4 pt-4 border-t border-white border-opacity-20 text-sm opacity-90">
+                <i class="fas fa-info-circle mr-1"></i>Total frames vidéo
+            </div>
+        </div>
+
+        <!-- Temps de Traitement Moyen -->
+        <div class="stat-card bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg rounded-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold opacity-90">Temps Moyen</h3>
+                    <p class="text-3xl font-bold mt-2">{{ avg_processing_time }}s</p>
+                </div>
+                <i class="fas fa-clock text-5xl opacity-20"></i>
+            </div>
+            <div class="mt-4 pt-4 border-t border-white border-opacity-20 text-sm opacity-90">
+                <i class="fas fa-info-circle mr-1"></i>Traitement vidéo
+            </div>
+        </div>
+    </div>
+
+    <!-- Graphiques -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white shadow-md rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                <i class="fas fa-chart-pie mr-2 text-blue-600"></i>Répartition des Validations
+            </h3>
+            <div class="chart-container">
+                <canvas id="donutChart"></canvas>
+            </div>
+        </div>
+        <div class="bg-white shadow-md rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                <i class="fas fa-photo-video mr-2 text-purple-600"></i>Images vs Vidéos
+            </h3>
+            <div class="chart-container">
+                <canvas id="mediaTypeChart"></canvas>
+            </div>
+        </div>
+        <div class="bg-white shadow-md rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                <i class="fas fa-chart-line mr-2 text-green-600"></i>Évolution des Détections
+            </h3>
+            <div class="chart-container">
+                <canvas id="lineChart"></canvas>
+            </div>
+        </div>
+        <div class="bg-white shadow-md rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                <i class="fas fa-shield-alt mr-2 text-red-600"></i>Danger par Type de Média
+            </h3>
+            <div class="chart-container">
+                <canvas id="dangerByMediaChart"></canvas>
+            </div>
+        </div>
+        <div class="bg-white shadow-md rounded-lg p-6 md:col-span-2">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                <i class="fas fa-tags mr-2 text-orange-600"></i>Répartition par Catégorie
+            </h3>
+            <div class="chart-container">
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Détails des détections -->
+    <div class="bg-white shadow-md rounded-lg p-6">
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Détails des Détections</h3>
+            <div id="filter-params" class="text-sm text-gray-600 bg-blue-100 px-3 py-1 rounded-md"></div>
+        </div>
+        <div id="detection-details" class="overflow-x-auto relative">
+            <p class="text-gray-500">Cliquez sur un graphique pour afficher les détails des détections.</p>
+            <!-- Spinner de chargement -->
+            <div id="loading-spinner" class="hidden absolute inset-0 flex items-center justify-center bg-white bg-opacity-75">
+                <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+(function() {
+    // Donut Chart
+    const donutCanvas = document.getElementById('donutChart');
+    if (donutCanvas) {
+        const donutChart = new Chart(donutCanvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: {{ donut_data.labels|safe }},
+                datasets: [{
+                    data: {{ donut_data.data|safe }},
+                    backgroundColor: ['#10B981', '#EF4444', '#F59E0B']
+                }]
+            },
+            options: {
+                responsive: true,
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const label = donutChart.data.labels[index];
+                        fetchDetectionDetails({ validation_status: label.toLowerCase() });
+                    }
+                }
+            }
+        });
+    }
+
+    // ==================== NOUVEAU GRAPHIQUE: Media Type (Images vs Vidéos) ====================
+    const mediaTypeCanvas = document.getElementById('mediaTypeChart');
+    if (mediaTypeCanvas) {
+        const mediaTypeChart = new Chart(mediaTypeCanvas.getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: {{ media_type_data.labels|safe }},
+                datasets: [{
+                    data: {{ media_type_data.data|safe }},
+                    backgroundColor: ['#3B82F6', '#8B5CF6']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ==================== NOUVEAU GRAPHIQUE: Danger par Type de Média ====================
+    const dangerByMediaCanvas = document.getElementById('dangerByMediaChart');
+    if (dangerByMediaCanvas) {
+        const dangerByMediaChart = new Chart(dangerByMediaCanvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: {{ danger_by_media_data.labels|safe }},
+                datasets: [
+                    {
+                        label: 'Images',
+                        data: {{ danger_by_media_data.images|safe }},
+                        backgroundColor: '#3B82F6'
+                    },
+                    {
+                        label: 'Vidéos',
+                        data: {{ danger_by_media_data.videos|safe }},
+                        backgroundColor: '#8B5CF6'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { 
+                        title: { display: true, text: 'Niveau de Danger' },
+                        stacked: false
+                    },
+                    y: { 
+                        title: { display: true, text: 'Nombre' },
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            }
+        });
+    }
+
+    // Line Chart
+    const lineCanvas = document.getElementById('lineChart');
+    if (lineCanvas) {
+        const lineChart = new Chart(lineCanvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: {{ line_data.labels|safe }},
+                datasets: [{
+                    label: 'Détections par jour',
+                    data: {{ line_data.data|safe }},
+                    borderColor: '#0d6efd',
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Date' } },
+                    y: { title: { display: true, text: 'Nombre de détections' } }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const date = lineChart.data.labels[index];
+                        fetchDetectionDetails({ date: date });
+                    }
+                }
+            }
+        });
+    }
+
+    // Bar Chart
+    const barCanvas = document.getElementById('barChart');
+    if (barCanvas) {
+        const barChart = new Chart(barCanvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: {{ bar_category_data.labels|safe }},
+                datasets: [{
+                    label: 'Détections par catégorie',
+                    data: {{ bar_category_data.data|safe }},
+                    backgroundColor: '#0d6efd'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Catégorie' } },
+                    y: { title: { display: true, text: 'Nombre de détections' } }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const category = barChart.data.labels[index];
+                        fetchDetectionDetails({ category: category.toLowerCase() });
+                    }
+                }
+            }
+        });
+    }
+
+    // Fetch detection details and display parameters
+    function fetchDetectionDetails(filters) {
+        console.log('Fetching details with filters:', filters);
+        const url = new URL('{% url "detection:history" %}', window.location.origin);
+        const detectionDetails = document.getElementById('detection-details');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        
+        // Afficher le spinner et réduire l'opacité
+        detectionDetails.classList.add('loading');
+        loadingSpinner.classList.remove('hidden');
+
+        // Preserve existing filters from stats page
+        const currentParams = new URLSearchParams(window.location.search);
+        for (const [key, value] of currentParams) {
+            if (key !== 'page') url.searchParams.set(key, value);
+        }
+        // Add chart-specific filters
+        for (const [key, value] of Object.entries(filters)) {
+            url.searchParams.set(key, value);
+        }
+        // Display filter parameters
+        const paramsDisplay = [];
+        if (filters.validation_status) {
+            paramsDisplay.push(`Statut: ${filters.validation_status.charAt(0).toUpperCase() + filters.validation_status.slice(1)}`);
+        }
+        if (filters.date) {
+            paramsDisplay.push(`Date: ${filters.date}`);
+        }
+        if (filters.category) {
+            paramsDisplay.push(`Catégorie: ${filters.category.charAt(0).toUpperCase() + filters.category.slice(1)}`);
+        }
+        // Include stats page filters
+        const filterType = currentParams.get('filter') || 'all';
+        const filterLabels = {
+            'all': 'Tout',
+            'day': 'Aujourd\'hui',
+            'week': 'Cette semaine',
+            'month': 'Ce mois',
+            'custom': 'Personnalisé'
+        };
+        paramsDisplay.push(`Période: ${filterLabels[filterType] || 'Tout'}`);
+        if (filterType === 'custom') {
+            const startDate = currentParams.get('start_date');
+            const endDate = currentParams.get('end_date');
+            if (startDate) paramsDisplay.push(`Du: ${startDate}`);
+            if (endDate) paramsDisplay.push(`Au: ${endDate}`);
+        }
+        if (currentParams.get('operator_id')) {
+            const operatorSelect = document.getElementById('operator_id');
+            const operatorEmail = operatorSelect ? operatorSelect.querySelector(`option[value="${currentParams.get('operator_id')}"]`).textContent.trim() : 'Opérateur inconnu';
+            paramsDisplay.push(`Opérateur: ${operatorEmail}`);
+        }
+        document.getElementById('filter-params').innerHTML = paramsDisplay.length ? 
+            `<span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-md">Filtres appliqués: ${paramsDisplay.join(', ')}</span>` : 
+            '<span class="text-gray-500">Aucun filtre spécifique appliqué</span>';
+
+        console.log('Request URL:', url.toString());
+        fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.text();
+            })
+            .then(html => {
+                console.log('Received HTML length:', html.length);
+                detectionDetails.innerHTML = html;
+                detectionDetails.classList.remove('loading');
+                loadingSpinner.classList.add('hidden');
+                // Rebind pagination links for AJAX
+                document.querySelectorAll('#detection-details .pagination a').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        fetchDetectionDetails(Object.fromEntries(new URLSearchParams(link.search)));
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                detectionDetails.innerHTML = 
+                    '<p class="text-red-500">Erreur lors du chargement des détails : ' + error.message + '</p>';
+                detectionDetails.classList.remove('loading');
+                loadingSpinner.classList.add('hidden');
+            });
+    }
+})();
+</script>
+{% endblock %}

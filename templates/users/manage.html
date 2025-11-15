@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Utilisateurs | Sécurité Urbaine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .hover-scale {
+            transition: transform 0.2s ease;
+        }
+        .hover-scale:hover {
+            transform: scale(1.03);
+        }
+        .badge-pill {
+            border-radius: 9999px;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .table-row-hover:hover {
+            background-color: rgba(14, 165, 233, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    {% extends 'base.html' %}
+    {% load static %}
+    
+    {% block title %}Gestion des Utilisateurs | Sécurité Urbaine{% endblock %}
+    
+    {% block content %}
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden animate-fade-in hover-scale transition-all duration-200">
+            <div class="bg-gradient-to-r from-primary-600 to-primary-800 px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 rounded-full bg-white bg-opacity-20">
+                        <i class="fas fa-users text-white text-lg"></i>
+                    </div>
+                    <h2 class="text-xl font-semibold text-white">Gestion des Utilisateurs</h2>
+                </div>
+                <a href="{% url 'users:create' %}" class="inline-flex items-center px-4 py-2 bg-white text-primary-700 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all">
+                    <i class="fas fa-user-plus mr-2"></i>
+                    <span class="font-medium">Nouvel Utilisateur</span>
+                </a>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <div class="min-w-full">
+                    <table class="w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rôle</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Localisation</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for user_obj in users %}
+                            <tr class="table-row-hover transition-colors duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10">
+                                            {% if user_obj.profile_picture %}
+                                                <img class="h-10 w-10 rounded-full object-cover" src="{{ user_obj.profile_picture.url }}" alt="Photo de profil">
+                                            {% else %}
+                                                <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-user-circle text-gray-400 text-2xl"></i>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">{{ user_obj.get_full_name|default:"--" }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ user_obj.email }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if user_obj.is_administrator %}
+                                        <span class="badge-pill bg-red-100 text-red-800">Administrateur</span>
+                                    {% elif user_obj.is_supervisor %}
+                                        <span class="badge-pill bg-yellow-100 text-yellow-800">Superviseur</span>
+                                    {% else %}
+                                        <span class="badge-pill bg-blue-100 text-blue-800">Opérateur</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ user_obj.location|default:"Non spécifiée" }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if user_obj.is_active %}
+                                        <span class="badge-pill bg-green-100 text-green-800">Actif</span>
+                                    {% else %}
+                                        <span class="badge-pill bg-gray-100 text-gray-800">Inactif</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <div class="flex justify-end space-x-2">
+                                        <a href="{% url 'users:edit' user_obj.id %}" class="text-primary-600 hover:text-primary-900 p-2 rounded-full hover:bg-primary-50 transition-colors" title="Modifier">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% if user_obj != request.user %}
+                                        <a href="{% url 'users:delete' user_obj.id %}" class="text-red-600 hover:text-red-900 p-2 rounded-full hover:bg-red-50 transition-colors" title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            {% if not users %}
+            <div class="px-6 py-12 text-center">
+                <i class="fas fa-users-slash text-gray-300 text-5xl mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900">Aucun utilisateur trouvé</h3>
+                <p class="mt-1 text-sm text-gray-500">Commencez par ajouter un nouvel utilisateur.</p>
+                <div class="mt-6">
+                    <a href="{% url 'users:create' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        <i class="fas fa-user-plus mr-2"></i> Créer un utilisateur
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endblock %}
+</body>
+</html>

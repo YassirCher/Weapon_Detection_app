@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historique des Détections | Sécurité Urbaine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                        },
+                        danger: {
+                            500: '#ef4444',
+                            600: '#dc2626',
+                        },
+                        warning: {
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        },
+                        success: {
+                            500: '#10b981',
+                            600: '#059669',
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/css">
+        .img-thumbnail {
+            object-fit: cover;
+            width: 50px;
+            height: 50px;
+            border-radius: 0.25rem;
+        }
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        /* Video thumbnail with play overlay */
+        video.img-thumbnail {
+            display: block;
+        }
+        .group:hover .bg-opacity-40 {
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+        .group:hover .fa-play-circle {
+            transform: scale(1.1);
+            transition: transform 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    {% extends 'base.html' %}
+    {% load static %}
+
+    {% block content %}
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Header Card -->
+        <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
+            <div class="bg-blue-600 px-6 py-4 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-white">
+                    <i class="fas fa-history mr-2"></i>Historique des Détections
+                </h2>
+                <a href="{% url 'detection:upload' %}" class="inline-flex items-center px-4 py-2 bg-white text-blue-600 text-sm font-medium rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <i class="fas fa-plus mr-2"></i>Nouvelle Détection
+                </a>
+            </div>
+            
+            <!-- Filters Section -->
+            <div class="p-6">
+                <div class="bg-gray-50 p-5 rounded-lg shadow-sm mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Filtres</h3>
+                    <form method="get" class="space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
+                        <!-- Class Filter -->
+                        <div>
+                            <label for="class_filter" class="block text-sm font-medium text-gray-700 mb-1">Classe</label>
+                            <select id="class_filter" name="class_filter" onchange="this.form.submit()" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                <option value="">Toutes les classes</option>
+                                {% for cls, display in class_choices %}
+                                <option value="{{ cls }}" {% if class_filter == cls %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Danger Level Filter -->
+                        <div>
+                            <label for="danger_level_filter" class="block text-sm font-medium text-gray-700 mb-1">Niveau de danger</label>
+                            <select id="danger_level_filter" name="danger_level_filter" onchange="this.form.submit()" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                <option value="">Tous les niveaux</option>
+                                {% for level, display in danger_level_choices %}
+                                <option value="{{ level }}" {% if danger_level_filter == level %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Location Filter -->
+                        <div>
+                            <label for="location_filter" class="block text-sm font-medium text-gray-700 mb-1">Localisation</label>
+                            <select id="location_filter" name="location_filter" onchange="this.form.submit()" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                <option value="">Toutes les localisations</option>
+                                {% for location, display in location_choices %}
+                                <option value="{{ location }}" {% if location_filter == location %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Date From Filter -->
+                        <div>
+                            <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">Date début</label>
+                            <input type="date" id="date_from" name="date_from" value="{{ date_from }}" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                        </div>
+                        
+                        <!-- Date To Filter -->
+                        <div>
+                            <label for="date_to" class="block text-sm font-medium text-gray-700 mb-1">Date fin</label>
+                            <input type="date" id="date_to" name="date_to" value="{{ date_to }}" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                        </div>
+                        
+                        <!-- Filter Buttons -->
+                        <div class="md:col-start-3 md:col-span-1 flex justify-end space-x-3 items-end">
+                            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <i class="fas fa-filter mr-2"></i>Filtrer
+                            </button>
+                            <a href="{% url 'detection:history' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <i class="fas fa-undo mr-2"></i>Réinitialiser
+                            </a>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Detection Table -->
+                {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Média</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Localisation</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Validation</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for detection in page_obj %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ detection.detection_timestamp|date:"d/m/Y H:i" }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center space-x-3">
+                                        {% if detection.media_type == 'VIDEO' %}
+                                            <div class="relative group">
+                                                <video class="img-thumbnail object-cover cursor-pointer" preload="metadata">
+                                                    <source src="{{ detection.original_file.url }}#t=0.5" type="video/mp4">
+                                                </video>
+                                                <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded pointer-events-none">
+                                                    <i class="fas fa-play-circle text-white text-2xl"></i>
+                                                </div>
+                                            </div>
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded text-sm font-medium bg-purple-100 text-purple-800">
+                                                <i class="fas fa-video mr-1"></i>Vidéo
+                                            </span>
+                                        {% else %}
+                                            <img src="{{ detection.uploaded_file.url }}" alt="Miniature" class="img-thumbnail">
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded text-sm font-medium bg-blue-100 text-blue-800">
+                                                <i class="fas fa-image mr-1"></i>Image
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ detection.user_location|default:"Non spécifiée" }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex space-x-2">
+                                        {% if detection.danger_level == 'HYPERDANGEROUS' %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500 text-white">
+                                            Danger Critique
+                                        </span>
+                                        {% elif detection.danger_level == 'DANGEROUS' %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-400 text-gray-800">
+                                            Danger
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500 text-white">
+                                            Sécurisé
+                                        </span>
+                                        {% endif %}
+                                        
+                                        {% if detection.is_simulated %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-200 text-gray-800">
+                                            Simulé
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if detection.validation %}
+                                        {% if detection.validation.is_correct %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500 text-white">
+                                            Validé
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500 text-white">
+                                            Incorrect
+                                        </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-400 text-white">
+                                            Non validé
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <div class="flex space-x-2">
+                                        <a href="{% url 'detection:result' detection.id %}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if not detection.validation %}
+                                        <a href="{% url 'detection:validate' detection.id %}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                <nav class="py-6 flex items-center justify-between">
+                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm text-gray-700">
+                                Affichage de <span class="font-medium">{{ page_obj.start_index }}</span> à <span class="font-medium">{{ page_obj.end_index }}</span> sur <span class="font-medium">{{ page_obj.paginator.count }}</span> résultats
+                            </p>
+                        </div>
+                        <div>
+                            <ul class="inline-flex items-center -space-x-px">
+                                {% if page_obj.has_previous %}
+                                <li>
+                                    <a href="?page=1{% if class_filter %}&class_filter={{ class_filter }}{% endif %}{% if danger_level_filter %}&danger_level_filter={{ danger_level_filter }}{% endif %}{% if location_filter %}&location_filter={{ location_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" class="px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700">
+                                        <span class="sr-only">Première</span>
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="?page={{ page_obj.previous_page_number }}{% if class_filter %}&class_filter={{ class_filter }}{% endif %}{% if danger_level_filter %}&danger_level_filter={{ danger_level_filter }}{% endif %}{% if location_filter %}&location_filter={{ location_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700">
+                                        <span class="sr-only">Précédente</span>
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                    <li>
+                                        <span class="px-3 py-2 text-blue-600 border border-gray-300 bg-blue-50 hover:bg-blue-100 hover:text-blue-700">{{ num }}</span>
+                                    </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li>
+                                        <a href="?page={{ num }}{% if class_filter %}&class_filter={{ class_filter }}{% endif %}{% if danger_level_filter %}&danger_level_filter={{ danger_level_filter }}{% endif %}{% if location_filter %}&location_filter={{ location_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700">{{ num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if page_obj.has_next %}
+                                <li>
+                                    <a href="?page={{ page_obj.next_page_number }}{% if class_filter %}&class_filter={{ class_filter }}{% endif %}{% if danger_level_filter %}&danger_level_filter={{ danger_level_filter }}{% endif %}{% if location_filter %}&location_filter={{ location_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700">
+                                        <span class="sr-only">Suivante</span>
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="?page={{ page_obj.paginator.num_pages }}{% if class_filter %}&class_filter={{ class_filter }}{% endif %}{% if danger_level_filter %}&danger_level_filter={{ danger_level_filter }}{% endif %}{% if location_filter %}&location_filter={{ location_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700">
+                                        <span class="sr-only">Dernière</span>
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+                {% endif %}
+                
+                {% else %}
+                <div class="rounded-md bg-blue-50 p-4 mt-6">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-info-circle h-5 w-5 text-blue-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-blue-800">Aucune détection trouvée.</h3>
+                            <div class="mt-2 text-sm text-blue-700">
+                                <p>Modifiez vos filtres ou effectuez une nouvelle détection.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+</body>
+</html>

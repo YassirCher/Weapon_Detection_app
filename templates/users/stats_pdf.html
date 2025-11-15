@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Rapport de Statistiques</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h1 { text-align: center; }
+        h2 { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Rapport de Statistiques</h1>
+    <h2>Statistiques Générales</h2>
+    <table>
+        <tr><th>Total Détections</th><td>{{ total_detections }}</td></tr>
+        <tr><th>Total Rapports</th><td>{{ total_reports }}</td></tr>
+        <tr><th>Détections Aujourd'hui</th><td>{{ today_detections }}</td></tr>
+        <tr><th>Jour avec le Plus de Détections</th><td>
+            {% if max_detection_day %}
+                {{ max_detection_day.date }} ({{ max_detection_day.count }})
+            {% else %}
+                N/A
+            {% endif %}
+        </td></tr>
+        <tr><th>Détections Valides</th><td>{{ valid_detections }}</td></tr>
+        <tr><th>Détections Non Valides</th><td>{{ invalid_detections }}</td></tr>
+        <tr><th>Détections Incorrectes</th><td>{{ incorrect_detections }}</td></tr>
+    </table>
+    <h2>Répartition par Catégorie</h2>
+    <table>
+        <thead>
+            <tr><th>Catégorie</th><th>Nombre</th></tr>
+        </thead>
+        <tbody>
+            {% for category in categories_count %}
+            <tr><td>{{ category.name }}</td><td>{{ category.count }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

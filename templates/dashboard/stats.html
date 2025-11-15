@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Statistiques | Sécurité Urbaine{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        transition: transform 0.3s ease;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+    .chart-container {
+        height: 300px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Tableau de Bord Statistiques</h5>
+            </div>
+            <div class="card-body">
+                {% if app_settings.active_detection_model == 'simulation' %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-robot me-2"></i>
+                    <strong>Mode Simulation:</strong> Les statistiques affichées sont basées sur des détections simulées et ne représentent pas des analyses réelles.
+                </div>
+                {% endif %}
+                
+                <!-- Filtres de période -->
+                <div class="mb-4">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="days" class="form-label">Période d'analyse</label>
+                            <select class="form-select" id="days" name="days" onchange="this.form.submit()">
+                                <option value="7" {% if days == 7 %}selected{% endif %}>7 derniers jours</option>
+                                <option value="30" {% if days == 30 %}selected{% endif %}>30 derniers jours</option>
+                                <option value="90" {% if days == 90 %}selected{% endif %}>90 derniers jours</option>
+                                <option value="365" {% if days == 365 %}selected{% endif %}>Dernière année</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Cartes de statistiques générales -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white stats-card">
+                            <div class="card-body text-center">
+                                <h1 class="display-4">{{ total_detections }}</h1>
+                                <p class="mb-0">Détections Totales</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white stats-card">
+                            <div class="card-body text-center">
+                                <h1 class="display-4">{{ total_dangerous }}</h1>
+                                <p class="mb-0">Détections Dangereuses</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white stats-card">
+                            <div class="card-body text-center">
+                                <h1 class="display-4">{{ total_validations }}</h1>
+                                <p class="mb-0">Validations</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white stats-card">
+                            <div class="card-body text-center">
+                                <h1 class="display-4">{{ accuracy_percentage|floatformat:1 }}%</h1>
+                                <p class="mb-0">Précision du Modèle</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Graphique des détections par jour -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card shadow">
+                            <div class="card-header">
+                                <h6 class="mb-0">Détections par Jour</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="detectionsChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Statistiques par catégorie -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card shadow h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Précision par Catégorie</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Catégorie</th>
+                                                <th>Détections</th>
+                                                <th>Correctes</th>
+                                                <th>Précision</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for stat in category_stats %}
+                                            <tr>
+                                                <td>{{ stat.name }}</td>
+                                                <td>{{ stat.total_detections }}</td>
+                                                <td>{{ stat.correct_detections }}</td>
+                                                <td>
+                                                    <div class="progress" style="height: 20px;">
+                                                        <div class="progress-bar {% if stat.accuracy < 50 %}bg-danger{% elif stat.accuracy < 80 %}bg-warning{% else %}bg-success{% endif %}" 
+                                                             role="progressbar" 
+                                                             style="width: {{ stat.accuracy }}%;" 
+                                                             aria-valuenow="{{ stat.accuracy }}" 
+                                                             aria-valuemin="0" 
+                                                             aria-valuemax="100">
+                                                            {{ stat.accuracy|floatformat:1 }}%
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistiques par utilisateur -->
+                    <div class="col-md-6">
+                        <div class="card shadow h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Activité par Utilisateur</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Utilisateur</th>
+                                                <th>Rôle</th>
+                                                <th>Détections</th>
+                                                <th>Dangereuses</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for stat in user_stats %}
+                                            <tr>
+                                                <td>
+                                                    {% if stat.user__first_name or stat.user__last_name %}
+                                                        {{ stat.user__first_name }} {{ stat.user__last_name }}
+                                                    {% else %}
+                                                        {{ stat.user__email }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <span class="badge {% if stat.user__role == 'ADMIN' %}bg-danger{% elif stat.user__role == 'SUPERVISOR' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
+                                                        {% if stat.user__role == 'ADMIN' %}Administrateur
+                                                        {% elif stat.user__role == 'SUPERVISOR' %}Superviseur
+                                                        {% else %}Opérateur{% endif %}
+                                                    </span>
+                                                </td>
+                                                <td>{{ stat.total_detections }}</td>
+                                                <td>{{ stat.dangerous_detections }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Liens vers d'autres rapports -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-end">
+                            <a href="{% url 'dashboard:model_errors' %}" class="btn btn-outline-danger me-2">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Voir les Erreurs du Modèle
+                            </a>
+                            <a href="{% url 'detection:categories' %}" class="btn btn-outline-primary">
+                                <i class="fas fa-tags me-1"></i>Gérer les Catégories Dangereuses
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Données pour le graphique des détections par jour
+        const detectionsData = {{ detections_by_day|safe }};
+        
+        // Préparer les données pour Chart.js
+        const labels = detectionsData.map(item => {
+            const date = new Date(item.day);
+            return date.toLocaleDateString();
+        });
+        
+        const totalData = detectionsData.map(item => item.total);
+        const dangerousData = detectionsData.map(item => item.dangerous);
+        
+        // Créer le graphique
+        const ctx = document.getElementById('detectionsChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Détections Totales',
+                        data: totalData,
+                        backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                        borderColor: 'rgba(13, 110, 253, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Détections Dangereuses',
+                        data: dangerousData,
+                        backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                        borderColor: 'rgba(220, 53, 69, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
