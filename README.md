@@ -530,13 +530,13 @@ jupyter notebook notebook/wd-yolo.ipynb
 - Roboflow API key
 
 **Key Metrics Achieved:**
-mAP@0.50: 0.9911
-mAP@0.50:0.95: 0.9612
-Accuracy: 0.9960
-Precision (weighted): 0.9960
-Recall (weighted): 0.9960
-F1-Score (weighted): 0.9960
-MCC: 0.9954
+- mAP@0.50: 0.9911
+- mAP@0.50:0.95: 0.9612
+- Accuracy: 0.9960
+- Precision (weighted): 0.9960
+- Recall (weighted): 0.9960
+- F1-Score (weighted): 0.9960
+- MCC: 0.9954
 - Inference Time: ~15ms/image (GPU)
 
 ---
